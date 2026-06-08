@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "Agent": {
+      "title": "Agent",
+      "description": "An AI agent persona card.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "role": { "type": "string" },
+        "mode": { "type": "string", "enum": ["executor", "critic", "simulator"] },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "experience_level": { "type": "string", "enum": ["junior", "mid", "senior", "staff"] },
+        "strengths": { "type": "array", "items": { "type": "string" } },
+        "weaknesses": { "type": "array", "items": { "type": "string" } },
+        "tools": { "type": "array", "items": { "type": "string" } },
+        "behavior_rules": { "type": "array", "items": { "type": "string" } },
+        "context_budget": { "type": "integer" },
+        "priority_bias": {
+          "type": "object",
+          "properties": {
+            "correctness": { "type": "number" },
+            "speed": { "type": "number" },
+            "elegance": { "type": "number" }
+          }
+        },
+        "capability_vector": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "ownerId": { "type": "string" },
+        "version": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "role", "mode", "skills", "ownerId"]
+    },
+    "Job": {
+      "title": "Job",
+      "description": "A high-level job encompassing multiple tasks.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "goal": { "type": "string" },
+        "teamId": { "type": "string" },
+        "status": { "type": "string", "enum": ["planning", "executing", "synthesizing", "completed", "failed"] },
+        "userId": { "type": "string" },
+        "max_iterations": { "type": "integer" },
+        "current_iteration": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "goal", "status", "userId"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "An individual task within a job.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "jobId": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string" },
+        "dependencies": { "type": "array", "items": { "type": "string" } },
+        "assigned_agents": { "type": "array", "items": { "type": "string" } },
+        "input": { "type": "object" },
+        "output": {
+          "type": "object",
+          "properties": {
+            "artifact_path": { "type": "string" },
+            "content": { "type": "string" }
+          }
+        },
+        "status": { "type": "string", "enum": ["pending", "in_progress", "done", "failed", "iterating"] },
+        "routing_tags": { "type": "array", "items": { "type": "string" } },
+        "confidence": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "jobId", "description", "status"]
+    },
+    "Evaluation": {
+      "title": "Evaluation",
+      "description": "A critic's review of a task artifact.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "taskId": { "type": "string" },
+        "agentId": { "type": "string" },
+        "score": { "type": "number" },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+              "category": { "type": "string" },
+              "description": { "type": "string" },
+              "location": { "type": "string" }
+            }
+          }
+        },
+        "recommendations": { "type": "array", "items": { "type": "string" } },
+        "risk_flags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "level": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "taskId", "agentId", "score"]
+    }
+  },
+  "firestore": {
+    "/agents/{agentId}": {
+      "schema": "Agent",
+      "description": "Reusable agent cards."
+    },
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Simulation jobs."
+    },
+    "/jobs/{jobId}/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Tasks associated with a job."
+    },
+    "/jobs/{jobId}/tasks/{taskId}/evaluations/{evalId}": {
+      "schema": "Evaluation",
+      "description": "Evaluations for a task."
+    }
+  }
+}

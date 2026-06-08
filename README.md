@@ -1,11 +1,21 @@
-<div align="center">
+# Swarm Registry // idCard
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+A multimodal agent orchestration platform designed for high-fidelity persona simulation and collaborative swarm benchmarking.
 
-  <h1>Built with AI Studio</h2>
+## Core Features
+- **Persona Registry**: Advanced agent profiles with "idCard" metadata.
+- **Benchmark Laboratory**: Scenario-based simulations with recommended persona entities.
+- **Swarm Visualizer**: Force-directed influence networks and productivity yield heatmaps.
+- **Evolution System**: Level-up agents and spend skill points to refine capability vectors.
+- **Summary Dashboard**: Real-time telemetry for swarm health and efficiency.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## Getting Started
+1. **Authenticate**: Sign in via Google to access the secure registry.
+2. **Explore Agents**: View established personas or forge your own through the Creator.
+3. **Execute Simulations**: Launch benchmark scenarios to see agents collaborate in real-time.
+4. **Analyze Networks**: Use the Analytic Canvas to observe trust and collaboration links.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+## Tech Stack
+- **Frontend**: React 18, Vite, Tailwind CSS, Motion (Framer Motion).
+- **Backend**: Node.js (Express), Firebase (Firestore & Auth).
+- **Visualization**: D3.js.

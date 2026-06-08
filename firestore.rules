@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Master Gate: Catch-all deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidAgent(data) {
+      return data.keys().hasAll(['id', 'role', 'mode', 'skills', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().size() <= 16
+        && data.id is string && isValidId(data.id)
+        && data.role is string && data.role.size() <= 100
+        && data.mode in ['executor', 'critic', 'simulator']
+        && data.skills is list && data.skills.size() <= 50
+        && data.ownerId == request.auth.uid
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function isValidJob(data) {
+      return data.keys().hasAll(['id', 'goal', 'status', 'userId', 'createdAt', 'updatedAt'])
+        && data.keys().size() <= 10
+        && data.id is string && isValidId(data.id)
+        && data.goal is string && data.goal.size() <= 1000
+        && data.status in ['planning', 'executing', 'synthesizing', 'completed', 'failed']
+        && data.userId == request.auth.uid
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['id', 'jobId', 'description', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().size() <= 12
+        && data.id is string && isValidId(data.id)
+        && data.jobId is string && isValidId(data.jobId)
+        && data.description is string && data.description.size() <= 2000
+        && data.status in ['pending', 'in_progress', 'done', 'failed', 'iterating']
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function isValidEvaluation(data) {
+      return data.keys().hasAll(['id', 'taskId', 'agentId', 'score', 'createdAt'])
+        && data.keys().size() <= 8
+        && data.id is string && isValidId(data.id)
+        && data.taskId is string && isValidId(data.taskId)
+        && data.agentId is string && isValidId(data.agentId)
+        && data.score is number && data.score >= 0 && data.score <= 1
+        && data.createdAt == request.time;
+    }
+
+    // --- Collections ---
+
+    // Agents
+    match /agents/{agentId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn(); // Users can see agents
+      allow create: if isSignedIn() && isValidAgent(incoming());
+      allow update: if isSignedIn() && isOwner(existing().ownerId) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['role', 'mode', 'skills', 'experience_level', 'strengths', 'weaknesses', 'tools', 'behavior_rules', 'context_budget', 'priority_bias', 'capability_vector', 'updatedAt'])
+        && incoming().updatedAt == request.time
+      );
+      allow delete: if isSignedIn() && isOwner(existing().ownerId);
+    }
+
+    // Jobs
+    match /jobs/{jobId} {
+      allow get: if isSignedIn() && isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidJob(incoming());
+      allow update: if isSignedIn() && isOwner(existing().userId) && (
+        existing().status != 'completed' && existing().status != 'failed' // Terminal state lock
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'current_iteration', 'updatedAt'])
+        && incoming().updatedAt == request.time
+      );
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+
+    // Tasks
+    match /jobs/{jobId}/tasks/{taskId} {
+      allow read: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId);
+      allow create: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId) && isValidTask(incoming());
+      allow update: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'output', 'confidence', 'updatedAt'])
+        && incoming().updatedAt == request.time
+      );
+      allow delete: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId);
+    }
+
+    // Evaluations
+    match /jobs/{jobId}/tasks/{taskId}/evaluations/{evalId} {
+      allow read: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId);
+      allow create: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId) && isValidEvaluation(incoming());
+    }
+  }
+}
