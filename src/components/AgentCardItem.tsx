@@ -45,6 +45,9 @@ export const AgentCardItem: React.FC<Props> = ({ agent, onSelect, className = ''
           <span className={isSimulator ? 'opacity-60' : ''}>CITIZEN_{agent.id.slice(0, 8).toUpperCase()}</span>
           <div className="flex gap-2 items-center">
              <span className="px-2 bg-stone-200 text-stone-600 uppercase text-[8px] font-bold tracking-widest">{lifecycle}</span>
+             {(agent.lineage?.generation || 1) > 1 && (
+               <span className="px-2 bg-blue-100 text-blue-600 uppercase text-[8px] font-bold tracking-widest">GEN {agent.lineage?.generation}</span>
+             )}
              <span className="opacity-50">LVL {currentLevel}</span>
              <span className={`px-2 uppercase ${
                isSimulator ? 'bg-zinc-800 text-zinc-400' : 

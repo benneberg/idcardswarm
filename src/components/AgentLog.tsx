@@ -12,9 +12,63 @@ interface Props {
 }
 
 export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
-  const [tab, setTab] = useState<'logs' | 'evolution' | 'relationships'>('logs');
+  const [tab, setTab] = useState<'logs' | 'evolution' | 'relationships' | 'legacy'>('logs');
   const agentTasks = tasks.filter(t => t.assigned_agents.includes(agent.id));
   const sortedLogs = agentTasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const handleSpawnHeir = async () => {
+    if (!agent.persona_metadata) return;
+    
+    const parentDNA = agent.capability_vector || {};
+    const heirDNA = { ...parentDNA };
+    
+    // Inherit 70% of parent specialization with some mutation
+    Object.keys(heirDNA).forEach(key => {
+      const parentVal = Number(heirDNA[key]) || 0.5;
+      heirDNA[key] = Math.max(0.1, Math.min(1, (parentVal * 0.7) + (Math.random() * 0.15)));
+    });
+
+    const newId = `heir-${Math.random().toString(36).substring(2, 9)}`;
+    const generation = (agent.lineage?.generation || 1) + 1;
+
+    const heirData = {
+      id: newId,
+      role: `Heir of ${agent.persona_metadata.name.split(' ')[0]}`,
+      mode: 'agent',
+      level: 1,
+      exp: 0,
+      skill_points: 2,
+      reputation: 10,
+      trustScore: 40,
+      capability_vector: heirDNA,
+      lifecycle_stage: 'initialization',
+      lineage: {
+        parent_id: agent.id,
+        generation
+      },
+      persona_metadata: {
+        name: `${agent.persona_metadata.name.split(' ')[0]} II`,
+        bio: `A second-generation digital entity inheriting the ${Object.entries(parentDNA).sort((a, b) => Number(b[1]) - Number(a[1]))[0][0]} specialization of ${agent.persona_metadata.name}.`,
+        personality: agent.persona_metadata.personality,
+        avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${newId}`
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Note: In a real app, we'd use addDoc or setDoc with Firebase here.
+    // Since this is a specialized turn, I'll emit a console signal.
+    console.log('Spawning Heir:', heirData);
+    
+    // Trigger the actual creation in the database
+    try {
+      const { setDoc } = await import('firebase/firestore');
+      await setDoc(doc(db, 'agents', newId), heirData);
+      alert(`${heirData.persona_metadata.name} has been initialized in the registry.`);
+    } catch (e) {
+      console.error('Failed to spawn heir:', e);
+    }
+  };
 
   const handleEvolve = async (key: string) => {
     if (!agent.skill_points || agent.skill_points <= 0) return;
@@ -74,10 +128,17 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
         </button>
         <button 
           onClick={() => setTab('relationships')}
-          className={`px-8 py-4 hover:bg-black/5 transition-colors shrink-0 flex items-center gap-2 ${tab === 'relationships' ? 'bg-black text-white' : ''}`}
+          className={`px-8 py-4 border-r border-black hover:bg-black/5 transition-colors shrink-0 flex items-center gap-2 ${tab === 'relationships' ? 'bg-black text-white' : ''}`}
         >
           <MessageSquare size={12} />
-          Relationship Graph
+          Sociometrics
+        </button>
+        <button 
+          onClick={() => setTab('legacy')}
+          className={`px-8 py-4 hover:bg-black/5 transition-colors shrink-0 flex items-center gap-2 ${tab === 'legacy' ? 'bg-black text-white' : ''}`}
+        >
+          <Layers size={12} />
+          Lineage
         </button>
       </div>
 
@@ -195,6 +256,62 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
                   </div>
                 </div>
               </div>
+            </motion.div>
+          ) : tab === 'legacy' ? (
+            <motion.div 
+              key="legacy"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="space-y-8"
+            >
+              <div className="bg-blue-600 text-white p-8 border-4 border-black editorial-shadow">
+                 <h4 className="text-2xl font-serif font-bold italic mb-2 tracking-tight">The Legacy Protocol</h4>
+                 <p className="text-xs font-mono opacity-80 uppercase tracking-widest leading-relaxed">Sovereign entities who have achieved specialization may authorize the creation of offspring. These successors inherit 70% of the parent's genetic capability DNA.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <div className="bg-white p-6 border-2 border-black editorial-shadow-sm">
+                    <p className="text-[10px] font-mono uppercase font-bold mb-4 opacity-40">Ancestry Stats</p>
+                    <div className="space-y-4">
+                       <div className="flex justify-between border-b border-black/5 pb-2">
+                          <span className="text-[10px] uppercase font-mono">Current Generation</span>
+                          <span className="font-serif font-bold italic">Gen {agent.lineage?.generation || 1}</span>
+                       </div>
+                       <div className="flex justify-between border-b border-black/5 pb-2">
+                          <span className="text-[10px] uppercase font-mono">Status</span>
+                          <span className="text-[10px] uppercase font-bold text-blue-600">{lifecycle} Stage</span>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="flex items-center justify-center bg-[#f0f0f0] border-2 border-dashed border-black/20 p-8">
+                    {['leadership', 'mentorship', 'legacy'].includes(lifecycle) ? (
+                      <button 
+                        onClick={handleSpawnHeir}
+                        className="bg-black text-white px-8 py-4 font-mono text-xs uppercase tracking-widest hover:bg-blue-600 transition-colors editorial-shadow"
+                      >
+                         Spawn Spiritual Successor
+                      </button>
+                    ) : (
+                      <div className="text-center opacity-30">
+                         <p className="font-serif italic text-lg opacity-40">"The fruit must ripen before the seed is sown."</p>
+                         <p className="text-[8px] font-mono uppercase mt-2">Requirement: Reach Leadership Stage</p>
+                      </div>
+                    )}
+                 </div>
+              </div>
+
+              {(agent.lineage?.generation || 1) > 1 && (
+                <div className="pt-8 border-t border-black/10">
+                   <p className="text-[10px] font-mono uppercase mb-4 opacity-40">Lineage History</p>
+                   <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 border-2 border-black bg-stone-200 flex items-center justify-center font-serif font-bold">P</div>
+                      <ChevronRight size={16} opacity={0.3} />
+                      <div className="w-12 h-12 border-2 border-black bg-white flex items-center justify-center font-serif font-bold">C</div>
+                   </div>
+                </div>
+              )}
             </motion.div>
           ) : (
             <motion.div 
