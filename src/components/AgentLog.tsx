@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AgentCard, SwarmTask } from '../types';
-import { db } from '../lib/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, Layers, Clock, Zap, TrendingUp, ChevronRight, Plus, Share2 } from 'lucide-react';
 import { CapabilityRadar } from './CapabilityRadar.tsx';
@@ -17,7 +17,7 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
   const sortedLogs = agentTasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const handleSpawnHeir = async () => {
-    if (!agent.persona_metadata) return;
+    if (!agent.persona_metadata || !auth.currentUser) return;
     
     const parentDNA = agent.capability_vector || {};
     const heirDNA = { ...parentDNA };
@@ -32,7 +32,6 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
     const generation = (agent.lineage?.generation || 1) + 1;
 
     const heirData = {
-      id: newId,
       role: `Heir of ${agent.persona_metadata.name.split(' ')[0]}`,
       mode: 'agent',
       level: 1,
@@ -42,6 +41,7 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
       trustScore: 40,
       capability_vector: heirDNA,
       lifecycle_stage: 'initialization',
+      ownerId: auth.currentUser.uid,
       lineage: {
         parent_id: agent.id,
         generation
@@ -52,21 +52,15 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
         personality: agent.persona_metadata.personality,
         avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${newId}`
       },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     };
 
-    // Note: In a real app, we'd use addDoc or setDoc with Firebase here.
-    // Since this is a specialized turn, I'll emit a console signal.
-    console.log('Spawning Heir:', heirData);
-    
-    // Trigger the actual creation in the database
     try {
-      const { setDoc } = await import('firebase/firestore');
       await setDoc(doc(db, 'agents', newId), heirData);
       alert(`${heirData.persona_metadata.name} has been initialized in the registry.`);
     } catch (e) {
-      console.error('Failed to spawn heir:', e);
+      handleFirestoreError(e, OperationType.WRITE, `agents/${newId}`);
     }
   };
 
@@ -76,11 +70,15 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
     const newVector = { ...agent.capability_vector };
     newVector[key] = Math.min(1, (Number(newVector[key]) || 0) + 0.05);
 
-    await updateDoc(doc(db, 'agents', agent.id), {
-      capability_vector: newVector,
-      skill_points: agent.skill_points - 1,
-      updatedAt: serverTimestamp()
-    });
+    try {
+      await updateDoc(doc(db, 'agents', agent.id), {
+        capability_vector: newVector,
+        skill_points: agent.skill_points - 1,
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `agents/${agent.id}`);
+    }
   };
 
   const currentLevel = agent.level || 1;

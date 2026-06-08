@@ -38,19 +38,20 @@ export interface AgentCard {
     speed: number;
     elegance: number;
   };
-  capability_vector: {
-    creativity: number;
-    strategic_thinking: number;
-    technical_depth: number;
-    communication: number;
-    leadership: number;
-    risk_tolerance: number;
-    research_ability: number;
-    reliability: number;
-    curiosity: number;
-    adaptability: number;
-    [key: string]: number;
+  capability_vector?: {
+    creativity?: number;
+    strategic_thinking?: number;
+    technical_depth?: number;
+    communication?: number;
+    leadership?: number;
+    risk_tolerance?: number;
+    research_ability?: number;
+    reliability?: number;
+    curiosity?: number;
+    adaptability?: number;
+    [key: string]: number | undefined;
   };
+  ownerId?: string;
   reputation?: number;
   trustScore?: number;
   level?: number;

@@ -19,12 +19,13 @@ import {
   addDoc, 
   query, 
   orderBy, 
+  where,
   setDoc,
   doc,
   updateDoc,
   serverTimestamp
 } from 'firebase/firestore';
-import { db, auth } from './lib/firebase.ts';
+import { db, auth, handleFirestoreError, OperationType } from './lib/firebase.ts';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
@@ -50,14 +51,13 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-    const unsubJobs = onSnapshot(collection(db, 'jobs'), (snap) => {
+    const qJobs = query(collection(db, 'jobs'), where('userId', '==', user.uid));
+    const unsubJobs = onSnapshot(qJobs, (snap) => {
       setAllJobs(snap.docs.map(d => ({ ...d.data(), id: d.id } as SwarmJob)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'jobs');
     });
-    // This is expensive but necessary for the global summary
-    const unsubAllTasks = onSnapshot(collection(db, 'jobs'), (snap) => {
-       // Just mapping to trigger re-renders for global task counts if needed
-       // In a real app we'd have a root tasks collection or a better aggregation
-    });
+    
     return () => unsubJobs();
   }, [user]);
 
@@ -103,7 +103,7 @@ export default function App() {
       }
       setLoading(false);
     }, (error) => {
-      console.error("Agent pulse failed:", error);
+      handleFirestoreError(error, OperationType.LIST, 'agents');
       setLoading(false);
     });
 
@@ -121,7 +121,7 @@ export default function App() {
         strengths: ['API Design', 'Cloud Infra'],
         experience_level: 'staff',
         tools: ['diagrams', 'docs'],
-        ownerId: user?.uid || 'system'
+        ownerId: user.uid
       },
       {
         id: 'sec_lens_001',
@@ -132,7 +132,7 @@ export default function App() {
         strengths: ['Pen testing', 'Audit'],
         experience_level: 'senior',
         tools: ['scanner'],
-        ownerId: user?.uid || 'system'
+        ownerId: user.uid
       },
       {
         id: 'ux_lens_001',
@@ -143,7 +143,7 @@ export default function App() {
         strengths: ['User Flow', 'Accessibility'],
         experience_level: 'senior',
         tools: ['figma'],
-        ownerId: user?.uid || 'system'
+        ownerId: user.uid
       }
     ];
 
@@ -151,31 +151,35 @@ export default function App() {
 
     for (const a of allAgentsToSeed) {
       const agentId = a.id || `agent_${Math.random().toString(36).substr(2, 9)}`;
-      await setDoc(doc(db, 'agents', agentId), {
-        ...a,
-        id: agentId,
-        version: '1.0',
-        exp: 0,
-        level: 1,
-        satisfaction: 0.8,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        capability_vector: a.capability_vector || {
-          coding: 0.5,
-          system_design: 0.5,
-          debugging: 0.5,
-          ui_design: 0.5,
-          curiosity: 0.5,
-          adaptability: 0.5
-        },
-        lifecycle_stage: a.lifecycle_stage || 'initialization',
-        reputation_history: a.reputation_history || [],
-        priority_bias: a.priority_bias || { correctness: 0.5, speed: 0.5, elegance: 0.5 },
-        context_budget: a.context_budget || 4000,
-        weaknesses: a.weaknesses || ['unknown'],
-        behavior_rules: a.behavior_rules || ['Follow instructions'],
-        ownerId: user?.uid || 'system'
-      });
+      try {
+        await setDoc(doc(db, 'agents', agentId), {
+          ...a,
+          id: agentId,
+          version: '1.0',
+          exp: 0,
+          level: 1,
+          satisfaction: 0.8,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          capability_vector: a.capability_vector || {
+            coding: 0.5,
+            system_design: 0.5,
+            debugging: 0.5,
+            ui_design: 0.5,
+            curiosity: 0.5,
+            adaptability: 0.5
+          },
+          lifecycle_stage: a.lifecycle_stage || 'initialization',
+          reputation_history: a.reputation_history || [],
+          priority_bias: a.priority_bias || { correctness: 0.5, speed: 0.5, elegance: 0.5 },
+          context_budget: a.context_budget || 4000,
+          weaknesses: a.weaknesses || ['unknown'],
+          behavior_rules: a.behavior_rules || ['Follow instructions'],
+          ownerId: user.uid
+        });
+      } catch (e) {
+        handleFirestoreError(e, OperationType.WRITE, `agents/${agentId}`);
+      }
     }
   };
 
@@ -193,7 +197,14 @@ export default function App() {
       userId: user.uid
     };
 
-    const jobDoc = await addDoc(collection(db, 'jobs'), jobData);
+    let jobDoc;
+    try {
+      jobDoc = await addDoc(collection(db, 'jobs'), jobData);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, 'jobs');
+      return;
+    }
+
     const jobId = jobDoc.id;
     setActiveJob({ ...jobData, id: jobId } as SwarmJob);
     setView('swarm');
@@ -210,13 +221,17 @@ export default function App() {
 
       // Add tasks to Firestore
       for (const t of taskList) {
-        await addDoc(collection(db, 'jobs', jobId, 'tasks'), {
-          ...t,
-          jobId,
-          status: 'pending',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
+        try {
+          await addDoc(collection(db, 'jobs', jobId, 'tasks'), {
+            ...t,
+            jobId,
+            status: 'pending',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        } catch (e) {
+          handleFirestoreError(e, OperationType.CREATE, `jobs/${jobId}/tasks`);
+        }
       }
     } catch (e) {
       console.error('Failed to decompose:', e);
@@ -229,6 +244,8 @@ export default function App() {
     const unsubTasks = onSnapshot(qTasks, (snapshot) => {
       const taskDocs = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as SwarmTask));
       setTasks(taskDocs);
+    }, (error) => {
+       handleFirestoreError(error, OperationType.LIST, `jobs/${activeJob.id}/tasks`);
     });
     return () => unsubTasks();
   }, [activeJob?.id]);
@@ -246,10 +263,14 @@ export default function App() {
       if (!nextTask) {
         // If all tasks are done, mark job as completed
         if (tasks.length > 0 && tasks.every(t => t.status === 'done')) {
-          await updateDoc(doc(db, 'jobs', activeJob.id), { 
-            status: 'completed', 
-            updatedAt: serverTimestamp() 
-          });
+          try {
+            await updateDoc(doc(db, 'jobs', activeJob.id), { 
+              status: 'completed', 
+              updatedAt: serverTimestamp() 
+            });
+          } catch (e) {
+            handleFirestoreError(e, OperationType.UPDATE, `jobs/${activeJob.id}`);
+          }
         }
         return;
       }
@@ -260,11 +281,15 @@ export default function App() {
           const taskRef = doc(db, 'jobs', activeJob.id, 'tasks', nextTask.id);
           
           // Mark as in_progress
-          await updateDoc(taskRef, { 
-            status: 'in_progress', 
-            startTime: serverTimestamp(),
-            updatedAt: serverTimestamp() 
-          });
+          try {
+            await updateDoc(taskRef, { 
+              status: 'in_progress', 
+              startTime: serverTimestamp(),
+              updatedAt: serverTimestamp() 
+            });
+          } catch (e) {
+            handleFirestoreError(e, OperationType.UPDATE, `jobs/${activeJob.id}/tasks/${nextTask.id}`);
+          }
 
           // Get the agent card for the assigned agent
           const agentId = nextTask.assigned_agents[0];
@@ -299,21 +324,29 @@ export default function App() {
           const skillPointsEarned = currentExp >= expToNext ? 1 : 0;
 
           // Update Agent Stats
-          await updateDoc(doc(db, 'agents', agent.id), {
-            exp: finalExp,
-            level: newLevel,
-            skill_points: (agent.skill_points || 0) + skillPointsEarned,
-            satisfaction: Math.min(1, (agent.satisfaction || 0.8) + 0.05),
-            updatedAt: serverTimestamp()
-          });
+          try {
+            await updateDoc(doc(db, 'agents', agent.id), {
+              exp: finalExp,
+              level: newLevel,
+              skill_points: (agent.skill_points || 0) + skillPointsEarned,
+              satisfaction: Math.min(1, (agent.satisfaction || 0.8) + 0.05),
+              updatedAt: serverTimestamp()
+            });
+          } catch (e) {
+            handleFirestoreError(e, OperationType.UPDATE, `agents/${agent.id}`);
+          }
 
-          await updateDoc(taskRef, { 
-            status: 'done', 
-            output: { content: result.content },
-            complexity,
-            duration: Math.floor((Date.now() - (nextTask.updatedAt ? new Date(nextTask.updatedAt).getTime() : Date.now())) / 1000),
-            updatedAt: serverTimestamp() 
-          });
+          try {
+            await updateDoc(taskRef, { 
+              status: 'done', 
+              output: { content: result.content },
+              complexity,
+              duration: Math.floor((Date.now() - (nextTask.updatedAt ? new Date(nextTask.updatedAt).getTime() : Date.now())) / 1000),
+              updatedAt: serverTimestamp() 
+            });
+          } catch (e) {
+            handleFirestoreError(e, OperationType.UPDATE, `jobs/${activeJob.id}/tasks/${nextTask.id}`);
+          }
 
       } catch (e) {
         console.error('Execution loop error:', e);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { db, auth } from '../lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { motion } from 'motion/react';
 import { UserPlus, Save, X, Sparkles } from 'lucide-react';
@@ -87,7 +87,7 @@ export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
       onSuccess();
       onClose();
     } catch (err) {
-      console.error('Failed to create persona:', err);
+      handleFirestoreError(err, OperationType.CREATE, 'agents');
     } finally {
       setLoading(false);
     }

@@ -40,7 +40,7 @@ export const SWARM_RULES = [
 export interface SwarmConnection {
   source: string; // Agent ID
   target: string; // Agent ID
-  type: 'trust' | 'influence' | 'collaboration' | 'conflict';
+  type: 'trust' | 'influence' | 'collaboration' | 'conflict' | 'pheromone';
   strength: number; // 0 to 1
   metadata?: any;
 }

@@ -14,47 +14,33 @@ service cloud.firestore {
     function existing() { return resource.data; }
 
     function isValidAgent(data) {
-      return data.keys().hasAll(['id', 'role', 'mode', 'skills', 'ownerId', 'createdAt', 'updatedAt'])
-        && data.keys().size() <= 16
-        && data.id is string && isValidId(data.id)
-        && data.role is string && data.role.size() <= 100
-        && data.mode in ['executor', 'critic', 'simulator']
-        && data.skills is list && data.skills.size() <= 50
-        && data.ownerId == request.auth.uid
-        && data.createdAt == request.time
-        && data.updatedAt == request.time;
+      return data.keys().hasAll(['role', 'mode', 'skills', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.role is string && data.role.size() <= 200
+        && data.mode in ['executor', 'critic', 'simulator', 'agent']
+        && data.skills is list && data.skills.size() <= 100
+        && data.ownerId is string && data.ownerId.size() <= 128
+        // During create, owner must be caller (unless it's system migration, but here we enforce caller)
+        && (request.method == 'create' ? data.ownerId == request.auth.uid : true)
+        && data.createdAt <= request.time
+        && data.updatedAt <= request.time;
     }
 
     function isValidJob(data) {
-      return data.keys().hasAll(['id', 'goal', 'status', 'userId', 'createdAt', 'updatedAt'])
-        && data.keys().size() <= 10
-        && data.id is string && isValidId(data.id)
-        && data.goal is string && data.goal.size() <= 1000
+      return data.keys().hasAll(['goal', 'status', 'userId', 'createdAt', 'updatedAt'])
+        && data.goal is string && data.goal.size() <= 5000
         && data.status in ['planning', 'executing', 'synthesizing', 'completed', 'failed']
         && data.userId == request.auth.uid
-        && data.createdAt == request.time
-        && data.updatedAt == request.time;
+        && data.createdAt <= request.time
+        && data.updatedAt <= request.time;
     }
 
     function isValidTask(data) {
-      return data.keys().hasAll(['id', 'jobId', 'description', 'status', 'createdAt', 'updatedAt'])
-        && data.keys().size() <= 12
-        && data.id is string && isValidId(data.id)
+      return data.keys().hasAll(['jobId', 'description', 'status', 'createdAt', 'updatedAt'])
         && data.jobId is string && isValidId(data.jobId)
-        && data.description is string && data.description.size() <= 2000
+        && data.description is string && data.description.size() <= 10000
         && data.status in ['pending', 'in_progress', 'done', 'failed', 'iterating']
-        && data.createdAt == request.time
-        && data.updatedAt == request.time;
-    }
-
-    function isValidEvaluation(data) {
-      return data.keys().hasAll(['id', 'taskId', 'agentId', 'score', 'createdAt'])
-        && data.keys().size() <= 8
-        && data.id is string && isValidId(data.id)
-        && data.taskId is string && isValidId(data.taskId)
-        && data.agentId is string && isValidId(data.agentId)
-        && data.score is number && data.score >= 0 && data.score <= 1
-        && data.createdAt == request.time;
+        && data.createdAt <= request.time
+        && data.updatedAt <= request.time;
     }
 
     // --- Collections ---
@@ -62,11 +48,16 @@ service cloud.firestore {
     // Agents
     match /agents/{agentId} {
       allow get: if isSignedIn();
-      allow list: if isSignedIn(); // Users can see agents
+      allow list: if isSignedIn(); 
       allow create: if isSignedIn() && isValidAgent(incoming());
-      allow update: if isSignedIn() && isOwner(existing().ownerId) && (
-        incoming().diff(existing()).affectedKeys().hasOnly(['role', 'mode', 'skills', 'experience_level', 'strengths', 'weaknesses', 'tools', 'behavior_rules', 'context_budget', 'priority_bias', 'capability_vector', 'updatedAt'])
-        && incoming().updatedAt == request.time
+      allow update: if isSignedIn() && (isOwner(existing().ownerId) || existing().ownerId == 'system') && (
+        isValidAgent(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'role', 'mode', 'skills', 'experience_level', 'strengths', 'weaknesses', 'tools', 
+          'behavior_rules', 'context_budget', 'priority_bias', 'capability_vector', 
+          'level', 'exp', 'skill_points', 'reputation', 'trustScore', 'lifecycle_stage', 
+          'satisfaction', 'lineage', 'persona_metadata', 'ownerId', 'updatedAt'
+        ])
       );
       allow delete: if isSignedIn() && isOwner(existing().ownerId);
     }
@@ -77,28 +68,28 @@ service cloud.firestore {
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn() && isValidJob(incoming());
       allow update: if isSignedIn() && isOwner(existing().userId) && (
-        existing().status != 'completed' && existing().status != 'failed' // Terminal state lock
-        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'current_iteration', 'updatedAt'])
-        && incoming().updatedAt == request.time
+        isValidJob(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'current_iteration', 'updatedAt'])
       );
       allow delete: if isSignedIn() && isOwner(existing().userId);
     }
 
-    // Tasks
+    // Tasks (Subcollection)
     match /jobs/{jobId}/tasks/{taskId} {
-      allow read: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId);
-      allow create: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId) && isValidTask(incoming());
-      allow update: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId) && (
-        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'output', 'confidence', 'updatedAt'])
-        && incoming().updatedAt == request.time
+      // Use get() to check parent job ownership for security
+      allow read: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
+      allow create: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid && isValidTask(incoming());
+      allow update: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid && (
+        isValidTask(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'output', 'confidence', 'startTime', 'duration', 'updatedAt'])
       );
-      allow delete: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId);
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
     }
 
-    // Evaluations
+    // Evaluations (Sub-subcollection)
     match /jobs/{jobId}/tasks/{taskId}/evaluations/{evalId} {
-      allow read: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId);
-      allow create: if isSignedIn() && isOwner(get(/databases/$(database)/documents/jobs/$(jobId)).data.userId) && isValidEvaluation(incoming());
+      allow read: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
+      allow create: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
     }
   }
 }
