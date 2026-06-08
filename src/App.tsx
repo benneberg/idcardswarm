@@ -13,6 +13,7 @@ import { PersonaCreator } from './components/PersonaCreator.tsx';
 import { ArchetypeSelector } from './components/ArchetypeSelector.tsx';
 import { SummaryDashboard } from './components/SummaryDashboard.tsx';
 import { AgentLog } from './components/AgentLog.tsx';
+import { ComparisonDashboard } from './components/ComparisonDashboard.tsx';
 import { 
   collection, 
   onSnapshot, 
@@ -22,20 +23,23 @@ import {
   where,
   setDoc,
   doc,
+  getDoc,
   updateDoc,
   serverTimestamp
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from './lib/firebase.ts';
+import { computeCapabilityDeltas } from './lib/capabilityEngine';
+import { spawnOffspring } from './lib/agentService';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
   GoogleAuthProvider, 
   signOut 
 } from 'firebase/auth';
-import type { AgentCard, SwarmJob, SwarmTask } from './types.ts';
+import type { AgentCard, SwarmJob, SwarmTask, EntityRelationship } from './types.ts';
 import { SEED_PERSONAS } from './data/seedPersonas.ts';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, ClipboardList, Settings, Loader2, Share2, Plus, X } from 'lucide-react';
+import { Users, ClipboardList, Settings, Loader2, Share2, Plus, X, GitMerge, AlertCircle, GitBranch } from 'lucide-react';
 
 export default function App() {
   const [view, setView] = useState<'agents' | 'swarm' | 'jobs' | 'visualizer'>('agents');
@@ -46,8 +50,37 @@ export default function App() {
   const [tasks, setTasks] = useState<SwarmTask[]>([]);
   const [showCreator, setShowCreator] = useState(false);
   const [selectedLogAgent, setSelectedLogAgent] = useState<AgentCard | null>(null);
+  const [selectedForComparison, setSelectedForComparison] = useState<AgentCard[]>([]);
+  const [legacyAgent, setLegacyAgent] = useState<AgentCard | null>(null);
   const [allJobs, setAllJobs] = useState<SwarmJob[]>([]);
   const [allTasks, setAllTasks] = useState<SwarmTask[]>([]);
+  const [allRelationships, setAllRelationships] = useState<EntityRelationship[]>([]);
+
+  const getLifecycleStage = (level: number, currentStage: string): string => {
+    if (level >= 20) return 'legacy';
+    if (level >= 15) return 'mentorship';
+    if (level >= 10) return 'leadership';
+    if (level >= 5) return 'collaboration';
+    if (level >= 2) return 'learning';
+    return currentStage || 'initialization';
+  };
+
+  const getAgentStatus = (agentId: string) => {
+    const activeTask = allTasks.find(t => t.assigned_agents.includes(agentId) && t.status === 'in_progress');
+    if (activeTask) return 'Busy';
+    if (agentId.startsWith('agent_seed')) return 'Available';
+    return 'Available';
+  };
+
+  const handleComparisonToggle = (agent: AgentCard) => {
+    setSelectedForComparison(prev => {
+      if (prev.find(a => a.id === agent.id)) {
+        return prev.filter(a => a.id !== agent.id);
+      }
+      if (prev.length >= 2) return [prev[1], agent];
+      return [...prev, agent];
+    });
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -107,7 +140,17 @@ export default function App() {
       setLoading(false);
     });
 
-    return () => unsubAgents();
+    // Listen to Relationships
+    const unsubRels = onSnapshot(collection(db, 'relationships'), (snap) => {
+      setAllRelationships(snap.docs.map(d => d.data() as EntityRelationship));
+    }, (error) => {
+       handleFirestoreError(error, OperationType.LIST, 'relationships');
+    });
+
+    return () => {
+      unsubAgents();
+      unsubRels();
+    };
   }, [user]);
 
   const seedInitialAgents = async () => {
@@ -312,9 +355,53 @@ export default function App() {
           });
           const result = await res.json();
 
+          // 1. WIRE THE CRITIC
+          const critics = agents.filter(a => a.mode === 'critic');
+          const critic = critics[Math.floor(Math.random() * critics.length)] || agents[0]; // Fallback to first agent if no critic
+          
+          let evalResult = { score: 0.75, issues: [], recommendations: [], risk_flags: [] };
+          try {
+            const evalRes = await fetch('/api/swarm/evaluate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                task: nextTask, 
+                artifact: result.content, 
+                critic 
+              })
+            });
+            evalResult = await evalRes.json();
+          } catch (e) {
+            console.error('Critic evaluation failed, using fallback score:', e);
+          }
+
+          const performanceScore = evalResult.score;
+
+          // 2. FEEDBACK LOOP (Capability Evolution)
+          const routingTags = nextTask.routing_tags || [];
+          const currentVector = agent.capability_vector || {};
+          const capDeltas = computeCapabilityDeltas(
+            currentVector,
+            routingTags,
+            performanceScore,
+            true // succeeded
+          );
+
+          const updatedVector = { ...currentVector };
+          for (const delta of capDeltas) {
+            updatedVector[delta.dimension] = delta.after;
+          }
+
+          // Build reputation history entry
+          const reputationEntry = {
+            score: Math.round(performanceScore * 100),
+            timestamp: new Date().toISOString(),
+            reason: `Completed task: ${nextTask.description.slice(0, 60)}`,
+          };
+
           // Calculate rewards
           const complexity = nextTask.complexity || Math.floor(Math.random() * 5) + 3;
-          const xpEarned = complexity * 100;
+          const xpEarned = Math.round(complexity * 100 * performanceScore); // Modulated by score
           const currentExp = (agent.exp || 0) + xpEarned;
           const currentLevel = agent.level || 1;
           const expToNext = currentLevel * 1000;
@@ -323,23 +410,66 @@ export default function App() {
           const finalExp = currentExp >= expToNext ? currentExp - expToNext : currentExp;
           const skillPointsEarned = currentExp >= expToNext ? 1 : 0;
 
+          // Detect Legacy Event
+          if (newLevel === 20 && agent.level !== 20) {
+            setLegacyAgent(agent);
+          }
+
           // Update Agent Stats
+          const nextLifecycle = getLifecycleStage(newLevel, agent.lifecycle_stage || 'initialization');
+          
           try {
             await updateDoc(doc(db, 'agents', agent.id), {
               exp: finalExp,
               level: newLevel,
+              lifecycle_stage: nextLifecycle,
               skill_points: (agent.skill_points || 0) + skillPointsEarned,
               satisfaction: Math.min(1, (agent.satisfaction || 0.8) + 0.05),
+              capability_vector: updatedVector,
+              reputation_history: [
+                ...(agent.reputation_history || []).slice(-49),
+                reputationEntry
+              ],
               updatedAt: serverTimestamp()
             });
           } catch (e) {
             handleFirestoreError(e, OperationType.UPDATE, `agents/${agent.id}`);
           }
 
+          // 3. PERSIST RELATIONSHIPS
+          const relId = [agent.id, critic.id].sort().join('_');
+          const relRef = doc(db, 'relationships', relId);
+          try {
+            const relSnap = await getDoc(relRef);
+            if (relSnap.exists()) {
+              const relData = relSnap.data();
+              await updateDoc(relRef, {
+                collaborationSuccess: (relData.collaborationSuccess || 0) + 1,
+                trust: Math.min(1, (relData.trust || 0.5) + 0.01 * performanceScore),
+                lastInteraction: serverTimestamp()
+              });
+            } else {
+              await setDoc(relRef, {
+                sourceId: agent.id,
+                targetId: critic.id,
+                trust: 0.5 + 0.01 * performanceScore,
+                influence: 0.5,
+                collaborationSuccess: 1,
+                agreementRate: 1,
+                conflictRate: 0,
+                reliability: 0.5,
+                lastInteraction: serverTimestamp()
+              });
+            }
+          } catch (e) {
+             console.error('Failed to update relationship:', e);
+          }
+
           try {
             await updateDoc(taskRef, { 
               status: 'done', 
               output: { content: result.content },
+              confidence: performanceScore,
               complexity,
               duration: Math.floor((Date.now() - (nextTask.updatedAt ? new Date(nextTask.updatedAt).getTime() : Date.now())) / 1000),
               updatedAt: serverTimestamp() 
@@ -448,6 +578,14 @@ export default function App() {
                     >
                       <Plus size={10} /> Add Citizen
                     </button>
+                    {selectedForComparison.length > 0 && (
+                      <button 
+                         onClick={() => setSelectedForComparison([])}
+                         className="px-4 py-2 border-2 border-black text-[10px] font-mono uppercase font-bold hover:bg-stone-100 transition-colors"
+                      >
+                         Clear Selection ({selectedForComparison.length})
+                      </button>
+                    )}
                     <span className="px-3 py-2 border border-[#1A1A1A] text-[10px] font-mono uppercase tracking-widest">Network Health: Stable</span>
                   </div>
                 </div>
@@ -469,14 +607,37 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 py-8">
                 {agents.map((agent, idx) => (
-                  <AgentCardItem 
-                    key={agent.id} 
-                    agent={agent} 
-                    onSelect={(a) => setSelectedLogAgent(a)}
-                    className={idx % 4 === 0 ? '-rotate-1' : idx % 4 === 2 ? 'rotate-1' : idx % 4 === 3 ? 'translate-y-4' : ''}
-                  />
+                   <div key={agent.id} className="relative group">
+                      <AgentCardItem 
+                        agent={agent} 
+                        onSelect={(a) => setSelectedLogAgent(a)}
+                        status={getAgentStatus(agent.id) as any}
+                        selected={selectedForComparison.some(a => a.id === agent.id)}
+                        className={idx % 4 === 0 ? '-rotate-1' : idx % 4 === 2 ? 'rotate-1' : idx % 4 === 3 ? 'translate-y-4' : ''}
+                      />
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleComparisonToggle(agent); }}
+                        className={`absolute bottom-4 right-4 z-20 p-2 border-2 border-black transition-all ${
+                          selectedForComparison.some(a => a.id === agent.id) 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-white opacity-0 group-hover:opacity-100 hover:bg-zinc-100'
+                        }`}
+                      >
+                        <GitMerge size={14} />
+                      </button>
+                   </div>
                 ))}
               </div>
+
+              <AnimatePresence>
+                {selectedForComparison.length === 2 && (
+                  <ComparisonDashboard 
+                    agentA={selectedForComparison[0]} 
+                    agentB={selectedForComparison[1]} 
+                    onClose={() => setSelectedForComparison([])} 
+                  />
+                )}
+              </AnimatePresence>
 
               <AnimatePresence>
                 {selectedLogAgent && (
@@ -530,7 +691,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <SwarmVisualizer agents={agents} tasks={tasks} />
+              <SwarmVisualizer agents={agents} tasks={tasks} relationships={allRelationships} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -544,6 +705,40 @@ export default function App() {
               />
             </div>
           )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+           {legacyAgent && (
+             <motion.div 
+               initial={{ opacity: 0, y: 50 }}
+               animate={{ opacity: 1, y: 0 }}
+               className="fixed bottom-8 right-8 z-[60] max-w-sm"
+             >
+                <div className="bg-blue-600 text-white border-4 border-black editorial-shadow p-6">
+                   <div className="flex gap-4 items-start mb-4">
+                      <div className="bg-white text-blue-600 p-2 rounded-full">
+                         <AlertCircle size={24} />
+                      </div>
+                      <div>
+                         <h4 className="font-serif font-bold italic text-lg leading-tight">Legacy Achievement: LVL 20</h4>
+                         <p className="text-[10px] font-mono uppercase opacity-80 mt-1">{legacyAgent.persona_metadata?.name} has achieved Sovereign status.</p>
+                      </div>
+                      <button onClick={() => setLegacyAgent(null)} className="opacity-50 hover:opacity-100">
+                         <X size={16} />
+                      </button>
+                   </div>
+                   <div className="bg-black/20 p-4 mb-4 text-[10px] font-mono leading-relaxed uppercase italic">
+                      The neural architecture is now sufficiently specialized to authorize a successor. Inherit DNA?
+                   </div>
+                   <button 
+                     onClick={() => spawnOffspring(legacyAgent).then(() => setLegacyAgent(null))}
+                     className="w-full bg-white text-blue-600 py-3 font-mono text-[10px] uppercase font-bold tracking-widest hover:bg-zinc-100 transition-colors flex items-center justify-center gap-2"
+                   >
+                      <GitBranch size={14} /> Spawn Spiritual Successor
+                   </button>
+                </div>
+             </motion.div>
+           )}
         </AnimatePresence>
       </main>
 

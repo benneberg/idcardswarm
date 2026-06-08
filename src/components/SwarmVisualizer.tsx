@@ -9,9 +9,10 @@ import { Share2, Clock, Info, Activity } from 'lucide-react';
 interface Props {
   agents: AgentCard[];
   tasks: SwarmTask[];
+  relationships?: any[]; // Using any[] for now or fetch and import type
 }
 
-export const SwarmVisualizer: React.FC<Props> = ({ agents, tasks }) => {
+export const SwarmVisualizer: React.FC<Props> = ({ agents, tasks, relationships = [] }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [timeStep, setTimeStep] = React.useState(100);
 
@@ -34,32 +35,44 @@ export const SwarmVisualizer: React.FC<Props> = ({ agents, tasks }) => {
       }
     });
 
-    // 2. Trust Matrix (Persistence and Personality)
-    agents.forEach((a1, i) => {
-      agents.slice(i + 1).forEach(a2 => {
-        const p1 = a1.persona_metadata?.personality;
-        const p2 = a2.persona_metadata?.personality;
-        
-        if (p1 && p2) {
-          const similarity = 1 - (
-            Math.abs(p1.openness - p2.openness) + 
-            Math.abs(p1.conscientiousness - p2.conscientiousness)
-          ) / 200;
-
-          if (similarity > 0.7) {
-            links.push({
-              source: a1.id,
-              target: a2.id,
-              type: 'trust',
-              strength: similarity
-            });
-          }
-        }
+    // 2. Persistent Trust (From Firestore Relationships)
+    relationships.forEach(rel => {
+      links.push({
+        source: rel.sourceId,
+        target: rel.targetId,
+        type: 'trust',
+        strength: rel.trust || 0.5
       });
     });
 
+    // 3. Spontaneous trust based on personality (for visual flair/discovery)
+    if (relationships.length === 0) {
+      agents.forEach((a1, i) => {
+        agents.slice(i + 1).forEach(a2 => {
+          const p1 = a1.persona_metadata?.personality;
+          const p2 = a2.persona_metadata?.personality;
+          
+          if (p1 && p2) {
+            const similarity = 1 - (
+              Math.abs(p1.openness - p2.openness) + 
+              Math.abs(p1.conscientiousness - p2.conscientiousness)
+            ) / 200;
+
+            if (similarity > 0.8) {
+              links.push({
+                source: a1.id,
+                target: a2.id,
+                type: 'trust',
+                strength: similarity * 0.5
+              });
+            }
+          }
+        });
+      });
+    }
+
     return links;
-  }, [agents, tasks]);
+  }, [agents, tasks, relationships]);
 
   useEffect(() => {
     if (!svgRef.current || agents.length === 0) return;

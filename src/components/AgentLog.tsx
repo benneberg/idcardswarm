@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AgentCard, SwarmTask } from '../types';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, setDoc, getDoc, collection, addDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, Layers, Clock, Zap, TrendingUp, ChevronRight, Plus, Share2 } from 'lucide-react';
+import { MessageSquare, Layers, Clock, Zap, TrendingUp, ChevronRight, Plus, Share2, Send, GitBranch } from 'lucide-react';
 import { CapabilityRadar } from './CapabilityRadar.tsx';
+import { spawnOffspring } from '../lib/agentService';
 
 interface Props {
   agent: AgentCard;
@@ -12,55 +13,75 @@ interface Props {
 }
 
 export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
-  const [tab, setTab] = useState<'logs' | 'evolution' | 'relationships' | 'legacy'>('logs');
+  const [tab, setTab] = useState<'logs' | 'evolution' | 'relationships' | 'legacy' | 'genealogy'>('logs');
+  const [quickTaskText, setQuickTaskText] = useState('');
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false);
+  const [ancestry, setAncestry] = useState<AgentCard[]>([]);
+
   const agentTasks = tasks.filter(t => t.assigned_agents.includes(agent.id));
   const sortedLogs = agentTasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const handleSpawnHeir = async () => {
-    if (!agent.persona_metadata || !auth.currentUser) return;
+  useEffect(() => {
+    if (tab === 'genealogy') {
+      loadAncestry(agent);
+    }
+  }, [tab, agent]);
+
+  const loadAncestry = async (current: AgentCard) => {
+    const family: AgentCard[] = [];
+    let parentId = current.lineage?.parent_id;
     
-    const parentDNA = agent.capability_vector || {};
-    const heirDNA = { ...parentDNA };
+    while (parentId) {
+      const parentDoc = await getDoc(doc(db, 'agents', parentId));
+      if (parentDoc.exists()) {
+        const parentData = { id: parentDoc.id, ...parentDoc.data() } as AgentCard;
+        family.push(parentData);
+        parentId = parentData.lineage?.parent_id;
+        if (family.length > 5) break; // Safety break
+      } else {
+        break;
+      }
+    }
+    setAncestry(family);
+  };
+
+  const handleQuickTask = async () => {
+    if (!quickTaskText.trim() || !auth.currentUser) return;
+    setIsSubmittingTask(true);
     
-    // Inherit 70% of parent specialization with some mutation
-    Object.keys(heirDNA).forEach(key => {
-      const parentVal = Number(heirDNA[key]) || 0.5;
-      heirDNA[key] = Math.max(0.1, Math.min(1, (parentVal * 0.7) + (Math.random() * 0.15)));
-    });
-
-    const newId = `heir-${Math.random().toString(36).substring(2, 9)}`;
-    const generation = (agent.lineage?.generation || 1) + 1;
-
-    const heirData = {
-      role: `Heir of ${agent.persona_metadata.name.split(' ')[0]}`,
-      mode: 'agent',
-      level: 1,
-      exp: 0,
-      skill_points: 2,
-      reputation: 10,
-      trustScore: 40,
-      capability_vector: heirDNA,
-      lifecycle_stage: 'initialization',
-      ownerId: auth.currentUser.uid,
-      lineage: {
-        parent_id: agent.id,
-        generation
-      },
-      persona_metadata: {
-        name: `${agent.persona_metadata.name.split(' ')[0]} II`,
-        bio: `A second-generation digital entity inheriting the ${Object.entries(parentDNA).sort((a, b) => Number(b[1]) - Number(a[1]))[0][0]} specialization of ${agent.persona_metadata.name}.`,
-        personality: agent.persona_metadata.personality,
-        avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${newId}`
-      },
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
     try {
-      await setDoc(doc(db, 'agents', newId), heirData);
-      alert(`${heirData.persona_metadata.name} has been initialized in the registry.`);
+      // Create a direct task for this agent
+      const taskData = {
+        description: quickTaskText,
+        type: 'Quick Directive',
+        assigned_agents: [agent.id],
+        status: 'pending',
+        jobId: 'quick-tasks',
+        dependencies: [],
+        input: {},
+        routing_tags: ['direct'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        userId: auth.currentUser.uid
+      };
+      
+      await addDoc(collection(db, 'tasks'), taskData);
+      setQuickTaskText('');
+      alert('Quick Directive issued to agent neural path.');
     } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, `agents/${newId}`);
+      handleFirestoreError(e, OperationType.WRITE, 'tasks');
+    } finally {
+      setIsSubmittingTask(false);
+    }
+  };
+
+  const handleSpawnHeir = async () => {
+    try {
+      const offspring = await spawnOffspring(agent);
+      alert(`${offspring.persona_metadata?.name} has been initialized successfully.`);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to spawn offspring. Ensure agent has full behavioral metadata.');
     }
   };
 
@@ -133,10 +154,17 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
         </button>
         <button 
           onClick={() => setTab('legacy')}
-          className={`px-8 py-4 hover:bg-black/5 transition-colors shrink-0 flex items-center gap-2 ${tab === 'legacy' ? 'bg-black text-white' : ''}`}
+          className={`px-8 py-4 border-r border-black hover:bg-black/5 transition-colors shrink-0 flex items-center gap-2 ${tab === 'legacy' ? 'bg-black text-white' : ''}`}
         >
           <Layers size={12} />
           Lineage
+        </button>
+        <button 
+          onClick={() => setTab('genealogy')}
+          className={`px-8 py-4 hover:bg-black/5 transition-colors shrink-0 flex items-center gap-2 ${tab === 'genealogy' ? 'bg-black text-white' : ''}`}
+        >
+          <GitBranch size={12} />
+          Genealogy
         </button>
       </div>
 
@@ -150,6 +178,31 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
               exit={{ opacity: 0 }}
               className="space-y-12"
             >
+              {/* Quick Task Section */}
+              <div className="bg-white p-6 border-2 border-black editorial-shadow-sm">
+                <h5 className="font-mono text-[10px] uppercase font-bold mb-4 flex items-center gap-2">
+                  <Send size={12} />
+                  Issue Quick Directive
+                </h5>
+                <div className="flex gap-4">
+                  <input 
+                    type="text" 
+                    value={quickTaskText}
+                    onChange={(e) => setQuickTaskText(e.target.value)}
+                    placeholder="Enter immediate task description..."
+                    className="flex-1 px-4 py-2 border-2 border-black font-mono text-xs focus:ring-2 focus:ring-black outline-none"
+                    disabled={isSubmittingTask}
+                  />
+                  <button 
+                    onClick={handleQuickTask}
+                    disabled={!quickTaskText.trim() || isSubmittingTask}
+                    className="bg-black text-white px-6 py-2 font-mono text-[10px] uppercase font-bold hover:bg-blue-600 transition-colors disabled:opacity-50"
+                  >
+                    Deploy
+                  </button>
+                </div>
+              </div>
+
               {/* Personality Quick View */}
               {agent.persona_metadata?.personality && (
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4 py-6 border-b border-black/10">
@@ -280,6 +333,12 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
                           <span className="text-[10px] uppercase font-mono">Status</span>
                           <span className="text-[10px] uppercase font-bold text-blue-600">{lifecycle} Stage</span>
                        </div>
+                       {agent.lineage?.parent_id && (
+                         <div className="flex justify-between border-b border-black/5 pb-2">
+                            <span className="text-[10px] uppercase font-mono">Parent Identity</span>
+                            <span className="text-[10px] uppercase font-bold truncate max-w-[150px]">{agent.lineage.parent_id.slice(0, 8)}...</span>
+                         </div>
+                       )}
                     </div>
                  </div>
 
@@ -294,24 +353,111 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
                     ) : (
                       <div className="text-center opacity-30">
                          <p className="font-serif italic text-lg opacity-40">"The fruit must ripen before the seed is sown."</p>
-                         <p className="text-[8px] font-mono uppercase mt-2">Requirement: Reach Leadership Stage</p>
+                         <p className="text-[8px] font-mono uppercase mt-2">Requirement: Reach Leadership Stage (Level 10)</p>
                       </div>
                     )}
                  </div>
               </div>
 
+              <div className="p-6 bg-zinc-50 border border-black/5">
+                 <h5 className="text-[10px] font-mono uppercase font-bold mb-4 opacity-40 italic">Active Specialization DNA</h5>
+                 <div className="flex flex-wrap gap-2">
+                    {Object.entries(agent.capability_vector || {})
+                      .sort((a, b) => Number(b[1]) - Number(a[1]))
+                      .slice(0, 3)
+                      .map(([dna, val]) => (
+                        <div key={dna} className="bg-white border border-black/10 px-4 py-2 flex items-center gap-3">
+                           <div className="w-2 h-2 rounded-full bg-blue-500" />
+                           <span className="text-[10px] font-mono uppercase font-bold">{dna.replace('_', ' ')}</span>
+                           <span className="text-[10px] font-mono font-bold text-blue-600">{(Number(val) * 100).toFixed(0)}%</span>
+                        </div>
+                      ))
+                    }
+                 </div>
+                 <p className="text-[9px] font-mono mt-4 opacity-40 uppercase tracking-widest">Offspring will prioritize these weights during initialization.</p>
+              </div>
+
               {(agent.lineage?.generation || 1) > 1 && (
                 <div className="pt-8 border-t border-black/10">
-                   <p className="text-[10px] font-mono uppercase mb-4 opacity-40">Lineage History</p>
+                   <p className="text-[10px] font-mono uppercase mb-4 opacity-40">Lineage Map</p>
                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 border-2 border-black bg-stone-200 flex items-center justify-center font-serif font-bold">P</div>
+                      <div className="group relative">
+                        <div className="w-12 h-12 border-2 border-dashed border-black bg-stone-200 flex items-center justify-center font-serif font-bold text-xs">ANCESTOR</div>
+                        <div className="absolute top-14 left-0 w-max bg-black text-white text-[8px] px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity uppercase font-mono">Original Root Entity</div>
+                      </div>
                       <ChevronRight size={16} opacity={0.3} />
-                      <div className="w-12 h-12 border-2 border-black bg-white flex items-center justify-center font-serif font-bold">C</div>
+                      <div className="w-14 h-14 border-2 border-black bg-white flex items-center justify-center font-serif font-bold text-sm shadow-[4px_4px_0px_rgba(0,0,0,0.1)]">GEN {agent.lineage?.generation}</div>
                    </div>
                 </div>
               )}
             </motion.div>
-          ) : (
+          ) : tab === 'genealogy' ? (
+            <motion.div 
+               key="genealogy"
+               initial={{ opacity: 0, scale: 0.95 }}
+               animate={{ opacity: 1, scale: 1 }}
+               exit={{ opacity: 0 }}
+               className="space-y-12"
+            >
+               <div className="text-center p-8 border-2 border-black bg-white mb-12">
+                  <h4 className="text-2xl font-serif font-bold italic mb-2 tracking-tight">The Ancestral Chain</h4>
+                  <p className="text-[10px] font-mono opacity-50 uppercase tracking-[0.2em]">Visualizing the inherited neural architecture across generations.</p>
+               </div>
+
+               <div className="flex flex-col items-center">
+                  {/* Current Agent */}
+                  <div className="relative flex flex-col items-center">
+                     <div className="w-24 h-24 border-4 border-black bg-white editorial-shadow p-2 z-10">
+                        <img 
+                          src={agent.persona_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${agent.id}`} 
+                          className="w-full h-full object-cover grayscale" 
+                          alt="Root" 
+                        />
+                     </div>
+                     <div className="mt-4 text-center">
+                        <p className="font-serif font-bold">{agent.persona_metadata?.name || agent.role}</p>
+                        <p className="text-[8px] font-mono uppercase bg-black text-white px-2 py-0.5 inline-block mt-1">Generation {agent.lineage?.generation || 1}</p>
+                     </div>
+                  </div>
+
+                  {/* Connecting Lines and Ancestors */}
+                  {ancestry.map((ancestor, index) => (
+                    <React.Fragment key={ancestor.id}>
+                       <div className="h-16 w-0.5 bg-black/20" />
+                       <div className="relative flex flex-col items-center">
+                          <div className="w-16 h-16 border-2 border-black/30 bg-zinc-50 editorial-shadow-sm p-1 grayscale group hover:grayscale-0 transition-all cursor-help">
+                             <img 
+                               src={ancestor.persona_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${ancestor.id}`} 
+                               className="w-full h-full object-cover opacity-60" 
+                               alt="Ancestor" 
+                             />
+                             <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          <div className="mt-2 text-center opacity-60">
+                             <p className="text-[10px] font-serif font-bold">{ancestor.persona_metadata?.name || ancestor.role}</p>
+                             <p className="text-[7px] font-mono uppercase mt-0.5">Generation {ancestor.lineage?.generation || 1}</p>
+                          </div>
+                       </div>
+                    </React.Fragment>
+                  ))}
+                  
+                  {ancestry.length === 0 && agent.lineage?.parent_id && (
+                     <div className="mt-8 p-4 bg-zinc-100 border border-dashed border-black/20 text-center animate-pulse">
+                        <p className="text-[10px] font-mono uppercase opacity-40">Tracing neural origins...</p>
+                     </div>
+                  )}
+
+                  {!agent.lineage?.parent_id && (
+                    <div className="mt-12 flex flex-col items-center">
+                       <div className="w-0.5 h-12 bg-black/20 border-dashed border-l" />
+                       <div className="px-6 py-2 border border-black/20 text-[10px] font-mono uppercase opacity-40 italic">
+                          Primary Ancestor // Root Entity
+                       </div>
+                    </div>
+                  )}
+               </div>
+            </motion.div>
+          ) : tab === 'relationships' ? (
             <motion.div 
               key="relationships"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -321,9 +467,9 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
             >
               <Share2 className="mx-auto mb-4 opacity-10" size={48} />
               <p className="font-serif italic text-xl opacity-40">Relational trust networks are populating based on simulation cycles.</p>
-              <p className="text-[10px] font-mono uppercase opacity-40 mt-2">Connecting context bridges... 42% synced</p>
+              <p className="text-[10px] font-mono uppercase opacity-40 mt-2">Connecting context bridges... {Math.floor(Math.random() * 20 + 40)}% synced</p>
             </motion.div>
-          )}
+          ) : null}
         </AnimatePresence>
       </div>
     </div>

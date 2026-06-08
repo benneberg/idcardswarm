@@ -56,7 +56,7 @@ service cloud.firestore {
           'role', 'mode', 'skills', 'experience_level', 'strengths', 'weaknesses', 'tools', 
           'behavior_rules', 'context_budget', 'priority_bias', 'capability_vector', 
           'level', 'exp', 'skill_points', 'reputation', 'trustScore', 'lifecycle_stage', 
-          'satisfaction', 'lineage', 'persona_metadata', 'ownerId', 'updatedAt'
+          'satisfaction', 'lineage', 'persona_metadata', 'reputation_history', 'ownerId', 'updatedAt'
         ])
       );
       allow delete: if isSignedIn() && isOwner(existing().ownerId);
@@ -90,6 +90,10 @@ service cloud.firestore {
     match /jobs/{jobId}/tasks/{taskId}/evaluations/{evalId} {
       allow read: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
       allow create: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
+    }
+    // Relationships
+    match /relationships/{relId} {
+      allow get, list, create, update: if isSignedIn();
     }
   }
 }

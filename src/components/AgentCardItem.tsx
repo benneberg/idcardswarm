@@ -7,9 +7,10 @@ interface Props {
   onSelect?: (agent: AgentCard) => void;
   className?: string;
   selected?: boolean;
+  status?: 'Available' | 'Busy' | 'In Training';
 }
 
-export const AgentCardItem: React.FC<Props> = ({ agent, onSelect, className = '', selected }) => {
+export const AgentCardItem: React.FC<Props> = ({ agent, onSelect, className = '', selected, status = 'Available' }) => {
   const isSimulator = agent.mode === 'simulator';
   const isCritic = agent.mode === 'critic';
   const persona = agent.persona_metadata;
@@ -23,6 +24,12 @@ export const AgentCardItem: React.FC<Props> = ({ agent, onSelect, className = ''
   const trustScore = agent.trustScore || 50;
   const lifecycle = agent.lifecycle_stage || 'collaboration';
 
+  const statusColors = {
+    'Available': 'bg-green-500',
+    'Busy': 'bg-orange-500',
+    'In Training': 'bg-blue-500'
+  };
+
   return (
     <motion.div 
       whileHover={{ y: -4 }}
@@ -34,6 +41,11 @@ export const AgentCardItem: React.FC<Props> = ({ agent, onSelect, className = ''
         ${className}
       `}
     >
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2 px-2 py-1 bg-white/80 backdrop-blur-sm border border-black/10 rounded-full shadow-sm">
+        <div className={`w-1.5 h-1.5 rounded-full ${statusColors[status]} animate-pulse`} />
+        <span className="text-[7px] font-mono font-bold uppercase tracking-widest text-black">{status}</span>
+      </div>
+
       <div className="absolute -top-1 -right-1 w-12 h-12 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 p-1 bg-blue-500 text-white text-[8px] font-bold font-mono rotate-45 transform translate-x-3 translate-y-1 w-20 text-center uppercase tracking-widest whitespace-nowrap">
            Citizen
