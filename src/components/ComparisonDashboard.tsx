@@ -29,14 +29,14 @@ export const ComparisonDashboard: React.FC<Props> = ({ agentA, agentB, onClose }
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 bg-stone-50">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-stone-50">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
             {/* AGENT A */}
             <div className="space-y-8">
               <AgentBrief agent={agentA} side="left" />
-              <div className="bg-white p-6 border border-black/10 editorial-shadow-sm">
-                <h4 className="font-mono text-[10px] uppercase font-bold mb-4 opacity-40">Capability Vector (Primary)</h4>
-                <div className="h-[300px]">
+              <div className="bg-white p-4 md:p-6 border border-black/10 editorial-shadow-sm overflow-hidden">
+                <h4 className="font-mono text-[10px] uppercase font-bold mb-4 opacity-40">Capability Vector (A)</h4>
+                <div className="h-[250px] md:h-[300px]">
                   <CapabilityRadar capabilityVector={agentA.capability_vector} />
                 </div>
               </div>
@@ -46,9 +46,9 @@ export const ComparisonDashboard: React.FC<Props> = ({ agentA, agentB, onClose }
             {/* AGENT B */}
             <div className="space-y-8">
               <AgentBrief agent={agentB} side="right" />
-              <div className="bg-white p-6 border border-black/10 editorial-shadow-sm">
-                <h4 className="font-mono text-[10px] uppercase font-bold mb-4 opacity-40">Capability Vector (Secondary)</h4>
-                <div className="h-[300px]">
+              <div className="bg-white p-4 md:p-6 border border-black/10 editorial-shadow-sm overflow-hidden">
+                <h4 className="font-mono text-[10px] uppercase font-bold mb-4 opacity-40">Capability Vector (B)</h4>
+                <div className="h-[250px] md:h-[300px]">
                   <CapabilityRadar capabilityVector={agentB.capability_vector} />
                 </div>
               </div>
@@ -83,19 +83,19 @@ export const ComparisonDashboard: React.FC<Props> = ({ agentA, agentB, onClose }
 };
 
 const AgentBrief = ({ agent, side }: { agent: AgentCard, side: 'left' | 'right' }) => (
-  <div className={`flex gap-6 items-center ${side === 'right' ? 'flex-row-reverse text-right' : ''}`}>
-    <div className="w-20 h-20 bg-zinc-100 border-2 border-black overflow-hidden shrink-0">
+  <div className={`flex flex-col sm:flex-row gap-4 md:gap-6 items-center ${side === 'right' ? 'sm:flex-row-reverse sm:text-right' : ''}`}>
+    <div className="w-16 h-16 md:w-20 md:h-20 bg-zinc-100 border-2 border-black overflow-hidden shrink-0">
       <img 
         src={agent.persona_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${agent.id}`} 
         className="w-full h-full object-cover grayscale" 
         alt={agent.role}
       />
     </div>
-    <div>
-      <h3 className="text-3xl font-serif font-bold tracking-tighter">{agent.persona_metadata?.name || agent.role}</h3>
-      <p className="text-[10px] font-mono uppercase font-bold text-blue-600">{agent.role} // LVL {agent.level || 1}</p>
-      <div className={`flex gap-3 text-[8px] font-mono uppercase mt-2 opacity-60 ${side === 'right' ? 'justify-end' : ''}`}>
-        <span>Repitation: {agent.reputation || 50}</span>
+    <div className="text-center sm:text-left">
+      <h3 className="text-2xl md:text-3xl font-serif font-bold tracking-tighter">{agent.persona_metadata?.name || agent.role}</h3>
+      <p className="text-[9px] md:text-[10px] font-mono uppercase font-bold text-blue-600">{agent.role} // LVL {agent.level || 1}</p>
+      <div className={`flex gap-3 text-[8px] font-mono uppercase mt-2 opacity-60 justify-center ${side === 'right' ? 'sm:justify-end' : 'sm:justify-start'}`}>
+        <span>Reputation: {agent.reputation || 50}</span>
         <span>Trust: {agent.trustScore || 50}</span>
       </div>
     </div>

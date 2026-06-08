@@ -522,37 +522,37 @@ export default function App() {
     <div className="editorial-container flex flex-col font-sans">
       <Header />
 
-      <main className="flex-1">
+      <main className="flex-1 overflow-x-hidden">
         <SummaryDashboard jobs={allJobs} tasks={tasks} agents={agents} />
         
-        <div className="flex gap-8 border-b border-black/10 mb-12 font-mono text-[10px] uppercase tracking-widest font-bold">
+        <div className="flex gap-8 border-b border-black/10 mb-12 font-mono text-[10px] uppercase tracking-widest font-bold overflow-x-auto no-scrollbar touch-pan-x">
           <button 
             onClick={() => setView('agents')}
-            className={`pb-4 border-b-2 transition-all flex items-center gap-2 ${view === 'agents' ? 'border-black opacity-100' : 'border-transparent opacity-40'}`}
+            className={`pb-4 border-b-2 transition-all shrink-0 flex items-center gap-2 ${view === 'agents' ? 'border-black opacity-100' : 'border-transparent opacity-40'}`}
           >
             <Users size={12} />
-            Persona Registry
+            Agent Directory
           </button>
           <button 
             onClick={() => setView('swarm')}
-            className={`pb-4 border-b-2 transition-all flex items-center gap-2 ${view === 'swarm' ? 'border-black opacity-100' : 'border-transparent opacity-40'}`}
+            className={`pb-4 border-b-2 transition-all shrink-0 flex items-center gap-2 ${view === 'swarm' ? 'border-black opacity-100' : 'border-transparent opacity-40'}`}
           >
             <ClipboardList size={12} />
-            Execution Swarm
+            Task Swarm
           </button>
           <button 
             onClick={() => setView('jobs')}
-            className={`pb-4 border-b-2 transition-all flex items-center gap-2 ${view === 'jobs' ? 'border-black opacity-100' : 'border-transparent opacity-40'}`}
+            className={`pb-4 border-b-2 transition-all shrink-0 flex items-center gap-2 ${view === 'jobs' ? 'border-black opacity-100' : 'border-transparent opacity-40'}`}
           >
             <Settings size={12} />
             Benchmarks
           </button>
           <button 
             onClick={() => setView('visualizer')}
-            className={`pb-4 border-b-2 transition-all flex items-center gap-2 ${view === 'visualizer' ? 'border-black opacity-100' : 'border-transparent opacity-40'}`}
+            className={`pb-4 border-b-2 transition-all shrink-0 flex items-center gap-2 ${view === 'visualizer' ? 'border-black opacity-100' : 'border-transparent opacity-40'}`}
           >
             <Share2 size={12} />
-            Analytic Canvas
+            System Map
           </button>
         </div>
 
@@ -568,15 +568,15 @@ export default function App() {
               <div className="flex justify-between items-end">
                 <div className="max-w-4xl border-l-4 border-black pl-6 ml-2">
                   <p className="text-4xl font-serif leading-tight mb-4 tracking-tight">
-                    Identifying the <span className="underline underline-offset-8 decoration-1">patterns</span> of intelligence within a persistent entity ecosystem.
+                    Monitor agent intelligence and evolutionary <span className="underline underline-offset-8 decoration-1">patterns</span> within the ecosystem.
                   </p>
-                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] mb-4 opacity-40 italic">Registry Status: {agents.length} Sovereigns Verified // 0 Collisions Detected</p>
+                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] mb-4 opacity-40 italic">Agent Status: {agents.length} Active Profiles</p>
                   <div className="flex gap-4">
                     <button 
                       onClick={() => setShowCreator(true)}
                       className="px-6 py-2 bg-black text-white text-[10px] font-mono uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2 editorial-shadow"
                     >
-                      <Plus size={10} /> Add Citizen
+                      <Plus size={10} /> Add Agent
                     </button>
                     {selectedForComparison.length > 0 && (
                       <button 
@@ -595,8 +595,8 @@ export default function App() {
                  <div className="flex items-center gap-4 mb-10">
                     <div className="w-10 h-10 bg-black text-white flex items-center justify-center font-serif italic text-xl">I</div>
                     <div>
-                       <h3 className="text-2xl font-serif font-bold tracking-tighter uppercase mb-1">Societal Archetypes</h3>
-                       <p className="text-[10px] font-mono uppercase tracking-widest opacity-40">Foundational Institutions // Collective DNA Blueprints</p>
+                       <h3 className="text-2xl font-serif font-bold tracking-tighter uppercase mb-1">Role Templates</h3>
+                       <p className="text-[10px] font-mono uppercase tracking-widest opacity-40">System Architectures // Foundational Blueprints</p>
                     </div>
                  </div>
                  <ArchetypeSelector onSelect={(id) => {
@@ -720,21 +720,21 @@ export default function App() {
                          <AlertCircle size={24} />
                       </div>
                       <div>
-                         <h4 className="font-serif font-bold italic text-lg leading-tight">Legacy Achievement: LVL 20</h4>
-                         <p className="text-[10px] font-mono uppercase opacity-80 mt-1">{legacyAgent.persona_metadata?.name} has achieved Sovereign status.</p>
+                         <h4 className="font-serif font-bold italic text-lg leading-tight">Mastery Milestone: LVL 20</h4>
+                         <p className="text-[10px] font-mono uppercase opacity-80 mt-1">{legacyAgent.persona_metadata?.name} has reached master status.</p>
                       </div>
                       <button onClick={() => setLegacyAgent(null)} className="opacity-50 hover:opacity-100">
                          <X size={16} />
                       </button>
                    </div>
                    <div className="bg-black/20 p-4 mb-4 text-[10px] font-mono leading-relaxed uppercase italic">
-                      The neural architecture is now sufficiently specialized to authorize a successor. Inherit DNA?
+                      Performance history suggests sufficient specialization to authorize a successor. Update DNA?
                    </div>
                    <button 
                      onClick={() => spawnOffspring(legacyAgent).then(() => setLegacyAgent(null))}
                      className="w-full bg-white text-blue-600 py-3 font-mono text-[10px] uppercase font-bold tracking-widest hover:bg-zinc-100 transition-colors flex items-center justify-center gap-2"
                    >
-                      <GitBranch size={14} /> Spawn Spiritual Successor
+                      <GitBranch size={14} /> Initialize Heir
                    </button>
                 </div>
              </motion.div>

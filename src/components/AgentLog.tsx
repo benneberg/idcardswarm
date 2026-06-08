@@ -112,7 +112,7 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
       <div className="bg-black text-white p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
            <div className="flex items-center gap-4 mb-2">
-              <p className="text-[10px] font-mono opacity-50 uppercase tracking-[0.3em]">Persistent Identity // {lifecycle} stage</p>
+              <p className="text-[10px] font-mono opacity-50 uppercase tracking-[0.3em]">Profile Status // {lifecycle} stage</p>
               <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
            </div>
            <h3 className="text-4xl font-serif font-bold tracking-tight mb-2">{agent.persona_metadata?.name || agent.role}</h3>
@@ -122,42 +122,42 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
               <span className="text-blue-400">Trust {trustScore}</span>
            </div>
         </div>
-        <div className="text-right flex items-center gap-6 bg-zinc-900 p-4 border border-zinc-800">
+        <div className="text-right flex items-center gap-6 bg-zinc-900 Number(agent.skill_points) > 0 ? 'border-yellow-400/30' : 'border-zinc-800' p-4 border transition-colors">
            <div>
-             <p className="text-[8px] font-mono opacity-50 uppercase tracking-widest mb-1">Skill Points</p>
+             <p className="text-[8px] font-mono opacity-50 uppercase tracking-widest mb-1">Growth Points</p>
              <p className="text-3xl font-serif italic text-yellow-400 font-bold">{agent.skill_points || 0}</p>
            </div>
            <Zap className="text-yellow-400 opacity-20" size={32} />
         </div>
       </div>
 
-      <div className="flex border-b border-black font-mono text-[10px] uppercase font-bold overflow-x-auto">
+      <div className="flex border-b border-black font-mono text-[10px] uppercase font-bold overflow-x-auto no-scrollbar touch-pan-x">
         <button 
           onClick={() => setTab('logs')}
           className={`px-8 py-4 border-r border-black hover:bg-black/5 transition-colors shrink-0 ${tab === 'logs' ? 'bg-black text-white' : ''}`}
         >
-          Activity Dossier
+          Activity Logs
         </button>
         <button 
           onClick={() => setTab('evolution')}
           className={`px-8 py-4 border-r border-black hover:bg-black/5 transition-colors shrink-0 flex items-center gap-2 ${tab === 'evolution' ? 'bg-black text-white' : ''}`}
         >
           <TrendingUp size={12} />
-          Evolution DNA
+          Capability DNA
         </button>
         <button 
           onClick={() => setTab('relationships')}
           className={`px-8 py-4 border-r border-black hover:bg-black/5 transition-colors shrink-0 flex items-center gap-2 ${tab === 'relationships' ? 'bg-black text-white' : ''}`}
         >
           <MessageSquare size={12} />
-          Sociometrics
+          Relationships
         </button>
         <button 
           onClick={() => setTab('legacy')}
           className={`px-8 py-4 border-r border-black hover:bg-black/5 transition-colors shrink-0 flex items-center gap-2 ${tab === 'legacy' ? 'bg-black text-white' : ''}`}
         >
           <Layers size={12} />
-          Lineage
+          Succession
         </button>
         <button 
           onClick={() => setTab('genealogy')}
@@ -247,13 +247,13 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
               className="space-y-8"
             >
               <div className="bg-zinc-900 text-white border-2 border-black p-6 editorial-shadow">
-                <p className="font-serif italic text-lg mb-4 text-zinc-300">"Sovereignty is the child of iteration."</p>
-                <p className="text-[9px] font-mono uppercase tracking-[0.2em] opacity-50">Authorized genetic refinement protocol active. DNA reconfiguration sequence initialized.</p>
+                <p className="font-serif italic text-lg mb-4 text-zinc-300">"Adapt and iterate to ensure progress."</p>
+                <p className="text-[9px] font-mono uppercase tracking-[0.2em] opacity-50">System ready for capability updates. Neural path evolution active.</p>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                  <div className="space-y-6">
-                     <h4 className="font-mono text-[10px] uppercase tracking-widest border-b border-black/10 pb-2">Career Evolution DNA</h4>
+                     <h4 className="font-mono text-[10px] uppercase tracking-widest border-b border-black/10 pb-2">Capability Growth</h4>
                      <CapabilityRadar capabilityVector={agent.capability_vector} />
                      
                      <div className="bg-white p-4 border border-black/5 editorial-shadow-sm">
@@ -276,7 +276,7 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
                      </div>
                  </div>
                  <div className="group space-y-4">
-                    <h4 className="font-mono text-[10px] uppercase tracking-widest border-b border-black/10 pb-2">Genetic Vectors</h4>
+                    <h4 className="font-mono text-[10px] uppercase tracking-widest border-b border-black/10 pb-2">Core Dimensions</h4>
                     <div className="max-h-[400px] overflow-y-auto pr-4 space-y-6">
                       {Object.entries(agent.capability_vector || {}).map(([key, value]) => (
                         key !== 'coding' && key !== 'system_design' && key !== 'debugging' && key !== 'ui_design' ? (
@@ -317,13 +317,13 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
               className="space-y-8"
             >
               <div className="bg-blue-600 text-white p-8 border-4 border-black editorial-shadow">
-                 <h4 className="text-2xl font-serif font-bold italic mb-2 tracking-tight">The Legacy Protocol</h4>
-                 <p className="text-xs font-mono opacity-80 uppercase tracking-widest leading-relaxed">Sovereign entities who have achieved specialization may authorize the creation of offspring. These successors inherit 70% of the parent's genetic capability DNA.</p>
+                 <h4 className="text-2xl font-serif font-bold italic mb-2 tracking-tight">Succession Plan</h4>
+                 <p className="text-xs font-mono opacity-80 uppercase tracking-widest leading-relaxed">Agents who have reached high levels of specialization can authorize a successor. Heirs inherit 30% of the parent's core capabilities.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                  <div className="bg-white p-6 border-2 border-black editorial-shadow-sm">
-                    <p className="text-[10px] font-mono uppercase font-bold mb-4 opacity-40">Ancestry Stats</p>
+                    <p className="text-[10px] font-mono uppercase font-bold mb-4 opacity-40">Succession Stats</p>
                     <div className="space-y-4">
                        <div className="flex justify-between border-b border-black/5 pb-2">
                           <span className="text-[10px] uppercase font-mono">Current Generation</span>
@@ -348,7 +348,7 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
                         onClick={handleSpawnHeir}
                         className="bg-black text-white px-8 py-4 font-mono text-xs uppercase tracking-widest hover:bg-blue-600 transition-colors editorial-shadow"
                       >
-                         Spawn Spiritual Successor
+                         Initialize Heir
                       </button>
                     ) : (
                       <div className="text-center opacity-30">
@@ -360,7 +360,7 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
               </div>
 
               <div className="p-6 bg-zinc-50 border border-black/5">
-                 <h5 className="text-[10px] font-mono uppercase font-bold mb-4 opacity-40 italic">Active Specialization DNA</h5>
+                 <h5 className="text-[10px] font-mono uppercase font-bold mb-4 opacity-40 italic">Active DNA Specialization</h5>
                  <div className="flex flex-wrap gap-2">
                     {Object.entries(agent.capability_vector || {})
                       .sort((a, b) => Number(b[1]) - Number(a[1]))
@@ -374,7 +374,7 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
                       ))
                     }
                  </div>
-                 <p className="text-[9px] font-mono mt-4 opacity-40 uppercase tracking-widest">Offspring will prioritize these weights during initialization.</p>
+                 <p className="text-[9px] font-mono mt-4 opacity-40 uppercase tracking-widest">Successors will prioritize these strengths during initialization.</p>
               </div>
 
               {(agent.lineage?.generation || 1) > 1 && (
