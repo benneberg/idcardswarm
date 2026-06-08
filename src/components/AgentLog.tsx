@@ -3,7 +3,7 @@ import { AgentCard, SwarmTask } from '../types';
 import { db } from '../lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, Layers, Clock, Zap, TrendingUp, ChevronRight, Plus } from 'lucide-react';
+import { MessageSquare, Layers, Clock, Zap, TrendingUp, ChevronRight, Plus, Share2 } from 'lucide-react';
 import { CapabilityRadar } from './CapabilityRadar.tsx';
 
 interface Props {

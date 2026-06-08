@@ -64,6 +64,9 @@ export default function App() {
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
+      if (!u) {
+        setLoading(false);
+      }
     });
     return () => unsubAuth();
   }, []);
@@ -98,6 +101,9 @@ export default function App() {
       if (docs.length === 0) {
         seedInitialAgents();
       }
+      setLoading(false);
+    }, (error) => {
+      console.error("Agent pulse failed:", error);
       setLoading(false);
     });
 
@@ -158,8 +164,12 @@ export default function App() {
           coding: 0.5,
           system_design: 0.5,
           debugging: 0.5,
-          ui_design: 0.5
+          ui_design: 0.5,
+          curiosity: 0.5,
+          adaptability: 0.5
         },
+        lifecycle_stage: a.lifecycle_stage || 'initialization',
+        reputation_history: a.reputation_history || [],
         priority_bias: a.priority_bias || { correctness: 0.5, speed: 0.5, elegance: 0.5 },
         context_budget: a.context_budget || 4000,
         weaknesses: a.weaknesses || ['unknown'],
