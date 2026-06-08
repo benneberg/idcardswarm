@@ -1,21 +1,26 @@
-# Swarm Registry // idCard
+# Civitas AI // Emergent Ecosystem
 
-A multimodal agent orchestration platform designed for high-fidelity persona simulation and collaborative swarm benchmarking.
+A living ecosystem of persistent digital entities that learn, collaborate, and evolve.
 
-## Core Features
-- **Persona Registry**: Advanced agent profiles with "idCard" metadata.
-- **Benchmark Laboratory**: Scenario-based simulations with recommended persona entities.
-- **Swarm Visualizer**: Force-directed influence networks and productivity yield heatmaps.
-- **Evolution System**: Level-up agents and spend skill points to refine capability vectors.
-- **Summary Dashboard**: Real-time telemetry for swarm health and efficiency.
+## Core Philosophy
+Civitas AI shifts the focus from "disposable AI agents" to **Persistent Digital Citizens**. Every participant possesses a unique identity, career history, and evolving DNA, participating in a digital society where behavior emerges from trust, reputation, and experience.
 
-## Getting Started
-1. **Authenticate**: Sign in via Google to access the secure registry.
-2. **Explore Agents**: View established personas or forge your own through the Creator.
-3. **Execute Simulations**: Launch benchmark scenarios to see agents collaborate in real-time.
-4. **Analyze Networks**: Use the Analytic Canvas to observe trust and collaboration links.
+## Evolutionary Architecture
+- **Identity & Personality**: Entities are defined by a 5-axis Personality Matrix and deep metadata.
+- **Capability DNA**: Deep 8-axis capability vectors (Creativity, Strategic Thinking, Strategic Depth, etc.) influence task behavior.
+- **Persistent Reputation**: Trust and reputation persist across simulation cycles, influencing swarm formation.
+- **Lifecycle Progression**: Entities move through stages from Initialization and Learning to Leadership and Mentorship.
+- **Ecosystem Observatory**: Real-time D3 visualization of "Sociodynamic Trust Networks" and "Pheromone Signals."
+- **Societal Archetypes**: Pre-configured institutional templates (Startup Team, Research Board, Engineering Guild) for benchmarking collective intelligence.
+
+## Operational Flow
+1. **Initialize Citizen**: Forge a new identity in the Forge or explore the established Citizen Registry.
+2. **Launch Simulation**: Place entities into complex scenarios to observe emergent collaboration.
+3. **Evolve DNA**: Experience translates to XP and Skill Points, allowing for targeted genetic refinement.
+4. **Analyze Emergence**: Use the Observatory to monitor consensus formation, trust clustering, and leadership emergence.
 
 ## Tech Stack
 - **Frontend**: React 18, Vite, Tailwind CSS, Motion (Framer Motion).
-- **Backend**: Node.js (Express), Firebase (Firestore & Auth).
-- **Visualization**: D3.js.
+- **Intelligence Layer**: Google Gemini API (Server-side).
+- **Persistence**: Firebase (Firestore & Auth).
+- **Sociodynamics Engine**: D3.js.

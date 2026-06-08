@@ -15,15 +15,15 @@ export const BenchmarkLab: React.FC<Props> = ({ agents }) => {
         <div className="max-w-xl">
           <div className="flex items-center gap-3 text-xs font-mono uppercase tracking-[0.3em] mb-4 opacity-50">
             <FlaskConical size={14} />
-            Experimental Module // Simulations
+            Ecosystem Laboratory // simulations
           </div>
-          <h1 className="text-6xl font-serif leading-tight tracking-tighter">
-            Benchmark <span className="italic">Scenarios</span>
+          <h1 className="text-6xl font-serif leading-tight tracking-tighter text-zinc-900">
+            Civitas <span className="italic">Simulations</span>
           </h1>
         </div>
         <div className="text-right font-mono text-[10px] uppercase opacity-40">
           Status: Operational<br />
-          Registry: alpha_v2
+          Civitas Hub: alpha_v2.1
         </div>
       </div>
 
@@ -53,15 +53,24 @@ export const BenchmarkLab: React.FC<Props> = ({ agents }) => {
                   <div className="flex gap-3">
                     <Target size={16} className="shrink-0 mt-1" />
                     <div>
-                      <p className="text-[10px] uppercase font-bold tracking-widest mb-1 text-black">Primary Goal</p>
+                      <p className="text-[10px] uppercase font-bold tracking-widest mb-1 text-black">Civic Goal</p>
                       <p className="text-sm leading-relaxed">{scenario.goal}</p>
                     </div>
                   </div>
                   <div className="flex gap-3">
                     <Users size={16} className="shrink-0 mt-1" />
                     <div>
-                      <p className="text-[10px] uppercase font-bold tracking-widest mb-1 text-black">Interaction Dynamics</p>
+                      <p className="text-[10px] uppercase font-bold tracking-widest mb-1 text-black">Evolutionary Dynamics</p>
                       <p className="text-sm leading-relaxed">{scenario.dynamics}</p>
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t border-black/5">
+                    <p className="text-[10px] uppercase font-bold tracking-widest mb-2 text-black">Benchmark Targets</p>
+                    <div className="grid grid-cols-2 gap-2 font-mono text-[8px] opacity-60">
+                       <div className="bg-stone-50 p-1 border border-black/5">INNOVATION: 75%+</div>
+                       <div className="bg-stone-50 p-1 border border-black/5">CONSENSUS: 90%+</div>
+                       <div className="bg-stone-50 p-1 border border-black/5">ACCURACY: 98%+</div>
+                       <div className="bg-stone-50 p-1 border border-black/5">HALLUCINATION: &lt; 2%</div>
                     </div>
                   </div>
                 </div>

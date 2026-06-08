@@ -10,6 +10,7 @@ import { SwarmBoard } from './components/SwarmBoard.tsx';
 import { BenchmarkLab } from './components/BenchmarkLab.tsx';
 import { SwarmVisualizer } from './components/SwarmVisualizer.tsx';
 import { PersonaCreator } from './components/PersonaCreator.tsx';
+import { ArchetypeSelector } from './components/ArchetypeSelector.tsx';
 import { SummaryDashboard } from './components/SummaryDashboard.tsx';
 import { AgentLog } from './components/AgentLog.tsx';
 import { 
@@ -392,22 +393,36 @@ export default function App() {
               className="space-y-8"
             >
               <div className="flex justify-between items-end">
-                <div className="max-w-2xl border-l-4 border-black pl-6 ml-2">
+                <div className="max-w-4xl border-l-4 border-black pl-6 ml-2">
                   <p className="text-4xl font-serif leading-tight mb-4 tracking-tight">
-                    Identifying the <span className="underline underline-offset-8 decoration-1">patterns</span> of intelligence within a multi-agent system.
+                    Identifying the <span className="underline underline-offset-8 decoration-1">patterns</span> of intelligence within a persistent entity ecosystem.
                   </p>
+                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] mb-4 opacity-40 italic">Registry Status: {agents.length} Sovereigns Verified // 0 Collisions Detected</p>
                   <div className="flex gap-4">
-                    <span className="px-3 py-1 bg-[#1A1A1A] text-white text-[10px] font-mono uppercase tracking-widest">Available: {agents.length || 0} Entities</span>
-                    <span className="px-3 py-1 border border-[#1A1A1A] text-[10px] font-mono uppercase tracking-widest">Identity Pool: alpha_24</span>
                     <button 
                       onClick={() => setShowCreator(true)}
-                      className="px-3 py-1 bg-black text-white text-[10px] font-mono uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2"
+                      className="px-6 py-2 bg-black text-white text-[10px] font-mono uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2 editorial-shadow"
                     >
-                      <Plus size={10} /> Add Persona
+                      <Plus size={10} /> Add Citizen
                     </button>
+                    <span className="px-3 py-2 border border-[#1A1A1A] text-[10px] font-mono uppercase tracking-widest">Network Health: Stable</span>
                   </div>
                 </div>
               </div>
+
+              <section className="bg-stone-50 p-12 border-2 border-black/5 editorial-shadow-sm">
+                 <div className="flex items-center gap-4 mb-10">
+                    <div className="w-10 h-10 bg-black text-white flex items-center justify-center font-serif italic text-xl">I</div>
+                    <div>
+                       <h3 className="text-2xl font-serif font-bold tracking-tighter uppercase mb-1">Societal Archetypes</h3>
+                       <p className="text-[10px] font-mono uppercase tracking-widest opacity-40">Foundational Institutions // Collective DNA Blueprints</p>
+                    </div>
+                 </div>
+                 <ArchetypeSelector onSelect={(id) => {
+                   // Integration for spawning groups is handled via future simulation turns
+                   console.log('Archetype selection persistent signal emitted:', id);
+                 }} />
+              </section>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 py-8">
                 {agents.map((agent, idx) => (

@@ -66,13 +66,13 @@ export const CapabilityRadar: React.FC<Props> = ({ capabilityVector }) => {
       .attr("class", "legend")
       .attr("text-anchor", "middle")
       .attr("dy", "0.35em")
-      .attr("x", (d: any, i: number) => rScale(1.15) * Math.cos(angleStep * i - Math.PI / 2))
-      .attr("y", (d: any, i: number) => rScale(1.15) * Math.sin(angleStep * i - Math.PI / 2))
+      .attr("x", (d: any, i: number) => rScale(1.18) * Math.cos(angleStep * i - Math.PI / 2))
+      .attr("y", (d: any, i: number) => rScale(1.18) * Math.sin(angleStep * i - Math.PI / 2))
       .attr("font-family", "JetBrains Mono")
-      .attr("font-size", "8px")
+      .attr("font-size", "7px")
       .attr("font-weight", "bold")
-      .attr("fill", "#666")
-      .text((d: any) => d.axis);
+      .attr("fill", "#333")
+      .text((d: any) => d.axis.toUpperCase().replace(/_/g, ' '));
 
     // Radar line generator
     const radarLine = d3.lineRadial<any>()

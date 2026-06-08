@@ -13,6 +13,13 @@ export interface PersonaMetadata {
   pain_points: string[];
   avatar_url?: string;
   contact?: string;
+  personality: {
+    openness: number;
+    conscientiousness: number;
+    risk_tolerance: number;
+    extraversion?: number;
+    agreeableness?: number;
+  };
 }
 
 export interface AgentCard {
@@ -32,21 +39,63 @@ export interface AgentCard {
     elegance: number;
   };
   capability_vector: {
-    coding: number;
-    system_design: number;
-    debugging: number;
-    ui_design: number;
+    creativity: number;
+    strategic_thinking: number;
+    technical_depth: number;
+    communication: number;
+    leadership: number;
+    risk_tolerance: number;
+    research_ability: number;
+    reliability: number;
+    curiosity: number;
+    adaptability: number;
     [key: string]: number;
   };
-  version: string;
-  ownerId: string;
-  persona_metadata?: PersonaMetadata;
+  reputation?: number;
+  trustScore?: number;
   level?: number;
   exp?: number;
   skill_points?: number;
   satisfaction?: number;
+  lifecycle_stage?: 'initialization' | 'learning' | 'collaboration' | 'leadership' | 'mentorship' | 'legacy';
+  reputation_history?: { score: number; timestamp: string; reason: string }[];
+  achievements?: Achievement[];
+  evolution_history?: EvolutionEvent[];
+  lineage?: {
+    parent_id?: string;
+    generation: number;
+  };
   createdAt: string;
   updatedAt: string;
+  persona_metadata?: PersonaMetadata;
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  unlockedAt: string;
+  icon: string;
+}
+
+export interface EvolutionEvent {
+  id: string;
+  type: 'level_up' | 'skill_upgrade' | 'milestone';
+  description: string;
+  timestamp: string;
+  metadata?: any;
+}
+
+export interface EntityRelationship {
+  sourceId: string;
+  targetId: string;
+  trust: number;
+  influence: number;
+  collaborationSuccess: number;
+  agreementRate: number;
+  conflictRate: number;
+  reliability: number;
+  lastInteraction: string;
 }
 
 export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'failed' | 'iterating';
@@ -110,4 +159,33 @@ export interface SwarmTeam {
   agentIds: string[];
   criticIds: string[];
   max_iterations: number;
+  archetype?: string;
+}
+
+export interface SwarmArchetype {
+  id: string;
+  name: string;
+  description: string;
+  composition: {
+    role: string;
+    description: string;
+    count: number;
+  }[];
+}
+
+export interface SwarmReport {
+  id: string;
+  jobId: string;
+  metrics: {
+    quality: number;
+    accuracy: number;
+    consensus: number;
+    efficiency: number;
+    productivity: number;
+    innovation: number;
+    hallucinationRate: number;
+    timeToCompletion: number;
+  };
+  insights: string[];
+  createdAt: string;
 }

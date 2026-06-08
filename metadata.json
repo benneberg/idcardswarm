@@ -1,6 +1,6 @@
 {
-  "name": "idCard Personas Swarm",
-  "description": "A multi-agent orchestration system that simulates engineering teams and stakeholder perspectives through structured Agent Cards.",
+  "name": "Civitas AI",
+  "description": "A living ecosystem of persistent AI entities that learn, collaborate, and evolve.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

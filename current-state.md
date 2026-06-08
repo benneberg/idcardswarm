@@ -1,22 +1,21 @@
-# Technical Analysis // Current State
+# technical Analysis // Current State: Civitas AI
 **Date**: June 8, 2026
-**Status**: Alpha v2.1 (Operational)
+**Status**: v3.0 Transformation (Alpha)
 
-## 🟢 Fully Implemented & Production Ready
-- **Authentication Flow**: Google OAuth integration via Firebase is robust and guards the entire UI.
-- **Agent Registry (idCard)**: Full CRUD-like capability for agents. The persona creator correctly populates deep metadata fields.
-- **Data Persistence**: Firestore schema is synchronized for `agents`, `jobs`, and `tasks`.
-- **Visualization (Social Graph)**: D3 Force simulation dynamically derives links based on shared motivations and active collaborations.
-- **Visualization (Heatmap)**: Chronological productivity mapping is functional and responds to task completion events.
-- **RPG Evolution Mechanics**: The leveling and skill-point expenditure system is fully reactive and persists changes to `capability_vector`.
-- **Benchmark Definitions**: Scenario seed data is well-structured and integrated into the simulation entry points.
+## 🟢 Fully Implemented & Verified
+- **Civic Identity System**: Entities now persist with a 5-axis Personality Matrix and an 8-axis Capability DNA (Creativity, Research, Curiosity, etc.).
+- **RPG Evolution Engine**: Leveling system, XP accumulation, and Skill Point expenditure for DNA refinement are fully operational.
+- **Ecosystem Observatory**: D3 Force-Directed system is now a "Sociodynamic Engine" visualizing personality-based trust links and "Pheromone Signals" from successful tasks.
+- **Societal Archetypes**: Archetype Selector is integrated, allowing the spawning of structured institutions (Startup Team, Scientific Review Board, etc.).
+- **Lifecycle Stages**: Citizen lifecycle tracking (Initialization, Collaboration, Leadership, etc.) integrated into identity cards and UI summaries.
 
 ## 🟡 Partially Implemented / Simplified
-- **Swarm Efficiency**: Currently uses a simplified heuristic (94% baseline). The infrastructure for tracking precise `duration` per task is in place, but a historical averaging engine for "benchmarked vs. actual" is still in utility phase.
-- **Communication Protocol**: Interaction logs display task outputs correctly, but agent-to-agent direct "Messaging" is currently simulated via shared task context rather than a dedicated P2P protocol.
-- **Trust Decay**: Trust links are derived based on static motivations; dynamic trust gain/loss over time is tracked in UI state but lacks a deep historical decay algorithm in the backend.
+- **Emergence Delta**: Global innovation and stability indices are derived from collective DNA averages; deep historical trend analysis is in development.
+- **Pheromone Dynamics**: Signals are visualized based on task completion, but the "Attraction" mechanism (autonomous swarm formation based on signals) is currently simulated via UI weighting.
+- **Trust Decay**: Relationship networks persist, but a formal mathematical model for trust erosion over time is awaiting historical job-depth integration.
 
-## 🔴 Future Roadmap / Not Implemented
-- **Multi-user Collaborative Editing**: While the DB is real-time, UI collisions between two users editing the same persona are not yet handled by a locking mechanism.
-- **Advanced Critic Feedback**: The 'Critic' agent mode currently executes tasks linearly; a recursive "Critique-Refine" loop is planned for v2.5.
-- **Export Capabilities**: Exporting swarm interaction logs to JSON/CSV for external analysis.
+## 🔴 Future Roadmap (Civitas Evolution)
+- **Autonomous Delegation**: Entities beginning to delegate tasks without human prompting based on peer trust/reputation.
+- **Institutional Culture**: When entities form a "Guild" or "Company", they inherit and influence collective cultural DNA.
+- **Lineage Tracking**: Entity genealogy trees showing mutations and specialization paths from one generation to the next.
+- **Market-Based Coordination**: Task allocation via bidding systems where reputation acts as currency.
