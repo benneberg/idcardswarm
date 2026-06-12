@@ -24,6 +24,7 @@ import {
   setDoc,
   doc,
   getDoc,
+  collectionGroup,
   updateDoc,
   serverTimestamp
 } from 'firebase/firestore';
@@ -147,9 +148,16 @@ export default function App() {
        handleFirestoreError(error, OperationType.LIST, 'relationships');
     });
 
+    // Listen to all Tasks (Global Stats)
+    const qAllTasks = query(collectionGroup(db, 'tasks'), where('userId', '==', user.uid));
+    const unsubAllTasks = onSnapshot(qAllTasks, (snap) => {
+      setAllTasks(snap.docs.map(d => ({ ...d.data(), id: d.id } as SwarmTask)));
+    });
+
     return () => {
       unsubAgents();
       unsubRels();
+      unsubAllTasks();
     };
   }, [user]);
 
@@ -268,6 +276,7 @@ export default function App() {
           await addDoc(collection(db, 'jobs', jobId, 'tasks'), {
             ...t,
             jobId,
+            userId: user.uid,
             status: 'pending',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
@@ -340,7 +349,7 @@ export default function App() {
           
           if (!agent) {
              console.error('Agent not found:', agentId);
-             await updateDoc(taskRef, { status: 'failed', updatedAt: new Date().toISOString() });
+             await updateDoc(taskRef, { status: 'failed', updatedAt: serverTimestamp() });
              return;
           }
 
@@ -664,6 +673,46 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
+              {/* Swarm Stats Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <div className="bg-white p-6 border-2 border-black editorial-shadow-sm flex flex-col items-center text-center">
+                  <div className="text-[8px] font-mono uppercase tracking-[0.2em] opacity-40 mb-2">Job Success Rate</div>
+                  <div className="text-4xl font-serif font-bold italic">
+                    {allJobs.length > 0 
+                      ? Math.round((allJobs.filter(j => j.status === 'completed').length / allJobs.length) * 100)
+                      : 0}%
+                  </div>
+                  <div className="h-1 w-full bg-stone-100 mt-4 overflow-hidden relative">
+                    <motion.div 
+                      className="absolute inset-y-0 left-0 bg-blue-600"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${allJobs.length > 0 ? (allJobs.filter(j => j.status === 'completed').length / allJobs.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 border-2 border-black editorial-shadow-sm flex flex-col items-center text-center">
+                  <div className="text-[8px] font-mono uppercase tracking-[0.2em] opacity-40 mb-2">Avg complexity</div>
+                  <div className="text-4xl font-serif font-bold italic">
+                    {allTasks.filter(t => t.complexity).length > 0
+                      ? (allTasks.reduce((acc, t) => acc + (t.complexity || 0), 0) / allTasks.filter(t => t.complexity).length).toFixed(1)
+                      : '0.0'}
+                  </div>
+                  <div className="text-[7px] font-mono uppercase opacity-30 mt-2">Scale 1-10 Neural Weight</div>
+                </div>
+
+                <div className="bg-black text-white p-6 border-2 border-black editorial-shadow-sm flex flex-col items-center text-center">
+                  <div className="text-[8px] font-mono uppercase tracking-[0.2em] opacity-40 mb-2">Utilization</div>
+                  <div className="text-4xl font-serif font-bold italic">
+                    {new Set(allTasks.filter(t => t.status === 'in_progress').flatMap(t => t.assigned_agents)).size}
+                  </div>
+                  <div className="text-[7px] font-mono uppercase opacity-40 mt-2 inline-flex items-center gap-2">
+                    <div className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
+                    Active Agents
+                  </div>
+                </div>
+              </div>
+
               <SwarmBoard 
                 agents={agents} 
                 onStartJob={handleStartJob} 

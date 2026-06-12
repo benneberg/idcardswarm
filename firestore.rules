@@ -76,14 +76,33 @@ service cloud.firestore {
 
     // Tasks (Subcollection)
     match /jobs/{jobId}/tasks/{taskId} {
-      // Use get() to check parent job ownership for security
-      allow read: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
-      allow create: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid && isValidTask(incoming());
-      allow update: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid && (
-        isValidTask(incoming()) &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'output', 'confidence', 'startTime', 'duration', 'updatedAt'])
+      allow read: if isSignedIn() && (
+        resource == null || 
+        get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid
       );
-      allow delete: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
+      allow create: if isSignedIn() && (
+        incoming().userId == request.auth.uid
+      ) && isValidTask(incoming());
+      allow update: if isSignedIn() && (
+        resource == null || 
+        get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid
+      ) && (
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'output', 'confidence', 'startTime', 'duration', 'updatedAt', 'complexity'
+        ])
+      );
+      allow delete: if isSignedIn() && (
+        resource == null || 
+        get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid
+      );
+    }
+
+    // Tasks (CollectionGroup)
+    match /{path=**}/tasks/{taskId} {
+      allow read: if isSignedIn() && (
+        resource == null || 
+        resource.data.userId == request.auth.uid
+      );
     }
 
     // Evaluations (Sub-subcollection)

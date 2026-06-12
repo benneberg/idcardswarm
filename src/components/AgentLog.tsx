@@ -60,8 +60,8 @@ export const AgentLog: React.FC<Props> = ({ agent, tasks }) => {
         dependencies: [],
         input: {},
         routing_tags: ['direct'],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         userId: auth.currentUser.uid
       };
       

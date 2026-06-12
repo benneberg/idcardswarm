@@ -116,6 +116,8 @@ export interface SwarmTask {
   status: TaskStatus;
   routing_tags: string[];
   confidence?: number;
+  complexity?: number;
+  duration?: number;
   createdAt: string;
   updatedAt: string;
 }
