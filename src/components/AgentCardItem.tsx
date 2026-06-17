@@ -129,6 +129,11 @@ export const AgentCardItem: React.FC<Props> = ({ agent, onSelect, className = ''
             <p className={`text-[10px] font-mono uppercase tracking-wider mb-2 ${isSimulator ? 'text-zinc-400' : 'text-zinc-500'}`}>
               {persona.occupation} • Age {persona.age}
             </p>
+            {persona.institution && (
+              <span className="inline-block px-2 py-0.5 mb-2 bg-stone-100 border border-black/10 text-[8px] font-mono uppercase tracking-widest text-black/60">
+                {persona.institution}
+              </span>
+            )}
             <p className="text-[11px] leading-relaxed opacity-70 line-clamp-2 italic">
               {persona.bio}
             </p>

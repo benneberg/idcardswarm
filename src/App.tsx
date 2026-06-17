@@ -40,7 +40,7 @@ import {
 import type { AgentCard, SwarmJob, SwarmTask, EntityRelationship } from './types.ts';
 import { SEED_PERSONAS } from './data/seedPersonas.ts';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, ClipboardList, Settings, Loader2, Share2, Plus, X, GitMerge, AlertCircle, GitBranch } from 'lucide-react';
+import { Users, ClipboardList, Settings, Loader2, Share2, Plus, X, GitMerge, AlertCircle, GitBranch, Search } from 'lucide-react';
 
 export default function App() {
   const [view, setView] = useState<'agents' | 'swarm' | 'jobs' | 'visualizer'>('agents');
@@ -56,6 +56,7 @@ export default function App() {
   const [allJobs, setAllJobs] = useState<SwarmJob[]>([]);
   const [allTasks, setAllTasks] = useState<SwarmTask[]>([]);
   const [allRelationships, setAllRelationships] = useState<EntityRelationship[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const getLifecycleStage = (level: number, currentStage: string): string => {
     if (level >= 20) return 'legacy';
@@ -580,21 +581,37 @@ export default function App() {
                     Monitor agent intelligence and evolutionary <span className="underline underline-offset-8 decoration-1">patterns</span> within the ecosystem.
                   </p>
                   <p className="text-[10px] font-mono uppercase tracking-[0.2em] mb-4 opacity-40 italic">Agent Status: {agents.length} Active Profiles</p>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => setShowCreator(true)}
-                      className="px-6 py-2 bg-black text-white text-[10px] font-mono uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2 editorial-shadow"
-                    >
-                      <Plus size={10} /> Add Agent
-                    </button>
-                    {selectedForComparison.length > 0 && (
+                  
+                  <div className="flex flex-col md:flex-row gap-6 mb-8 mr-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/20" size={14} />
+                      <input 
+                        type="text" 
+                        placeholder="SEARCH DNA REGISTRY..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-stone-50 border-2 border-black/10 py-3 pl-10 pr-4 font-mono text-[10px] uppercase tracking-widest focus:border-black transition-colors outline-none"
+                      />
+                    </div>
+                    <div className="flex gap-4">
                       <button 
-                         onClick={() => setSelectedForComparison([])}
-                         className="px-4 py-2 border-2 border-black text-[10px] font-mono uppercase font-bold hover:bg-stone-100 transition-colors"
+                        onClick={() => setShowCreator(true)}
+                        className="px-6 py-2 bg-black text-white text-[10px] font-mono uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2 editorial-shadow h-full"
                       >
-                         Clear Selection ({selectedForComparison.length})
+                        <Plus size={10} /> Add Agent
                       </button>
-                    )}
+                      {selectedForComparison.length > 0 && (
+                        <button 
+                           onClick={() => setSelectedForComparison([])}
+                           className="px-4 py-2 border-2 border-black text-[10px] font-mono uppercase font-bold hover:bg-stone-100 transition-colors h-full"
+                        >
+                           Clear ({selectedForComparison.length})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-4">
                     <span className="px-3 py-2 border border-[#1A1A1A] text-[10px] font-mono uppercase tracking-widest">Network Health: Stable</span>
                   </div>
                 </div>
@@ -615,7 +632,17 @@ export default function App() {
               </section>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 py-8">
-                {agents.map((agent, idx) => (
+                {agents
+                  .filter(agent => {
+                    if (!searchQuery) return true;
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      agent.persona_metadata?.name?.toLowerCase().includes(q) ||
+                      agent.role.toLowerCase().includes(q) ||
+                      agent.id.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((agent, idx) => (
                    <div key={agent.id} className="relative group">
                       <AgentCardItem 
                         agent={agent} 
