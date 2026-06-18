@@ -29,6 +29,12 @@ Interactive canvas maps utilizing D3.js visualize relationship trust networks, c
 ### 5. Automated Benchmarking
 The "Benchmark Lab" tracks agent success rates and complexity handling, allowing for continuous refinement of the agent population.
 
+## Documentation Strategy
+For deep dives into the vision and technical layout of Civitas AI, refer to the following:
+- [PURPOSE.md](./PURPOSE.md): Product vision, target audience, and key value propositions.
+- [ARCHITECTURE.md](./ARCHITECTURE.md): Technical stack, data models, and system orchestration flow.
+- [TODO.md](./TODO.md): Active development roadmap and technical debt tracking.
+
 ## Technical Configuration
 
 ### Environment Variables
@@ -58,6 +64,10 @@ VITE_FIREBASE_APP_ID=...
    ```bash
    npm run dev
    ```
+
+### Testing
+Civitas AI utilizes Vitest and React Testing Library for component validation.
+- **Run Tests**: `npm test`
 
 ### Deployment
 Civitas AI is designed for containerized deployment (e.g., Cloud Run).
