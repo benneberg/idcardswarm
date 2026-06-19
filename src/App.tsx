@@ -14,6 +14,9 @@ import { ArchetypeSelector } from './components/ArchetypeSelector.tsx';
 import { SummaryDashboard } from './components/SummaryDashboard.tsx';
 import { AgentLog } from './components/AgentLog.tsx';
 import { ComparisonDashboard } from './components/ComparisonDashboard.tsx';
+import { PersonaComparisonTable } from './components/PersonaComparisonTable.tsx';
+import { AffinityMapper } from './components/AffinityMapper.tsx';
+import { USER_PERSONAS, UserPersona } from './data/userPersonas.ts';
 import { 
   collection, 
   onSnapshot, 
@@ -43,7 +46,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Users, ClipboardList, Settings, Loader2, Share2, Plus, X, GitMerge, AlertCircle, GitBranch, Search } from 'lucide-react';
 
 export default function App() {
-  const [view, setView] = useState<'agents' | 'swarm' | 'jobs' | 'visualizer'>('agents');
+  const [view, setView] = useState<'agents' | 'swarm' | 'jobs' | 'visualizer' | 'insights'>('agents');
   const [agents, setAgents] = useState<AgentCard[]>([]);
   const [user, setUser] = useState(auth.currentUser);
   const [loading, setLoading] = useState(true);
@@ -57,6 +60,7 @@ export default function App() {
   const [allTasks, setAllTasks] = useState<SwarmTask[]>([]);
   const [allRelationships, setAllRelationships] = useState<EntityRelationship[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUserPersonas, setSelectedUserPersonas] = useState<UserPersona[]>([]);
 
   const getLifecycleStage = (level: number, currentStage: string): string => {
     if (level >= 20) return 'legacy';
@@ -564,6 +568,13 @@ export default function App() {
             <Share2 size={12} />
             System Map
           </button>
+          <button 
+            onClick={() => setView('insights')}
+            className={`pb-4 border-b-2 transition-all shrink-0 flex items-center gap-2 ${view === 'insights' ? 'border-black opacity-100' : 'border-transparent opacity-40'}`}
+          >
+            <Users size={12} />
+            User Insights
+          </button>
         </div>
 
         <AnimatePresence mode="wait">
@@ -768,6 +779,75 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
             >
               <SwarmVisualizer agents={agents} tasks={tasks} relationships={allRelationships} />
+            </motion.div>
+          )}
+
+          {view === 'insights' && (
+            <motion.div 
+              key="insights"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-16"
+            >
+              <section className="border-l-4 border-black pl-6 ml-2">
+                <h2 className="text-4xl font-serif leading-tight mb-4 tracking-tight">Civitas <span className="italic">Audience</span> Registry.</h2>
+                <p className="text-[10px] font-mono uppercase tracking-[0.2em] mb-4 opacity-40 italic">
+                  Mapping demographics, motivations, and operational constraints for target ecosystem users.
+                </p>
+              </section>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                {USER_PERSONAS.map(p => (
+                  <div 
+                    key={p.id}
+                    onClick={() => {
+                      setSelectedUserPersonas(prev => 
+                        prev.find(up => up.id === p.id) 
+                          ? prev.filter(up => up.id !== p.id)
+                          : [...prev, p]
+                      );
+                    }}
+                    className={`p-6 border-2 transition-all cursor-pointer ${
+                      selectedUserPersonas.find(up => up.id === p.id) 
+                        ? 'border-black bg-white editorial-shadow' 
+                        : 'border-black/5 bg-stone-50 hover:border-black/20'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center text-center">
+                       <img src={p.avatar_url} alt={p.name} className="w-20 h-20 border border-black/10 grayscale mb-4" />
+                       <h4 className="font-serif font-bold text-xl leading-tight">{p.name}</h4>
+                       <p className="text-[9px] font-mono uppercase text-blue-600 font-bold mb-4">{p.occupation}</p>
+                       <div className="text-[10px] leading-relaxed opacity-60 line-clamp-3 italic">
+                         "{p.bio}"
+                       </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedUserPersonas.length > 0 && (
+                <section>
+                   <div className="flex justify-between items-center mb-8">
+                      <h4 className="font-mono text-[10px] uppercase font-bold tracking-widest">Active Analysis Panel</h4>
+                      <button 
+                        onClick={() => setSelectedUserPersonas([])}
+                        className="text-[10px] font-mono uppercase underline opacity-40 hover:opacity-100"
+                      >
+                        Reset Selection
+                      </button>
+                   </div>
+                   <PersonaComparisonTable 
+                     personas={selectedUserPersonas} 
+                     onRemove={(id) => setSelectedUserPersonas(prev => prev.filter(p => p.id !== id))}
+                     onClose={() => setSelectedUserPersonas([])}
+                   />
+                </section>
+              )}
+
+              <section className="pt-12 border-t border-black/10">
+                <AffinityMapper />
+              </section>
             </motion.div>
           )}
         </AnimatePresence>

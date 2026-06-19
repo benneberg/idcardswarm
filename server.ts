@@ -27,6 +27,10 @@ const MODELS = {
 };
 
 // API Routes
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 app.post("/api/swarm/decompose", async (req, res) => {
   try {
     const { goal, team } = req.body;

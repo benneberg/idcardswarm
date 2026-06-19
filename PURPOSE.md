@@ -1,24 +1,60 @@
 # Civitas AI: Strategic Purpose & Vision
 
-## 1. Target Audience
-Civitas AI is designed for individuals and organizations operating at the intersection of generative AI and systems orchestration.
+## PRODUCT SUMMARY
+Civitas AI is a **Persona Swarm Registry and Orchestrator**. It provides a persistent ecosystem for managing autonomous AI entities (Agents) characterized by evolving "Capability Vectors" (DNA). The system allows users to decompose high-level Jobs into granular SwarmTasks, which are then processed by specialized agents whose skills and reputation grow through successful execution.
 
-*   **AI System Architects**: Engineers building multi-agent systems who require a persistent registry to manage specialized "sub-brains" and their evolutionary growth.
-*   **Narrative Designers & Game Developers**: Creators building complex NPCs or assistant personalities that need to maintain a consistent ethos while evolving over time.
-*   **Decentralized Operations Leads**: Managers overseeing "digital workforces" where task complexity requires specialized agent swarms rather than single-prompt outputs.
-*   **Ecosystem Researchers**: Academics and hobbyists studying emergent behaviors, trust networks, and genetic algorithms within AI agent populations.
+**Confidence: High** (Directly observed in `App.tsx`, `agentService.ts`, and `swarm-logic.ts`)
 
-## 2. Value Proposition
-Civitas AI bridges the gap between transient AI chats and persistent digital intelligence.
+---
 
-*   **Persistent Neural Identity**: Beyond simple system prompts, every agent in Civitas owns a "Capability Vector"—a multi-dimensional DNA profile that persists across sessions.
-*   **Evolutionary Iteration (The Legacy Protocol)**: Unlike static models, Civitas agents "level up" through specialization. High-level agents can authorize heirs, allowing for multi-generational refinement of AI strengths.
-*   **Full-Stack Observability**: A professional, editorial-grade dashboard provides immediate oversight into job success rates, task complexity, and active agent utilization.
-*   **Trust-Based Sociometrics**: Civitas maps the relationships between agents, simulating an ecosystem where performance builds reputation and collaborative success fosters trust.
+## PROBLEM STATEMENT
+Modern LLM interactions are often transient and lack long-term specialization. Civitas AI solves the problem of **agentic persistence and collaborative scaling**. Instead of single-prompt interactions, it allows for a "digital workforce" that retains identity, evolves its strengths based on performance, and can be managed as a collective "swarm" to solve complex multi-step problems.
 
-## 3. Must-Have Core Features
-*   **DNA Registry**: A searchable, high-precision database for active agent profiles.
-*   **Task Swarm Orchestrator**: A dynamic board for decomposing complex jobs into agent-routed tasks.
-*   **Specialization Lab**: Visual radar charts tracking the evolution of agent capabilities (Coding, Logic, UI Design, etc.).
-*   **Succession Engine**: A logic gate for authorizing heir initialization, inheriting partial parental DNA.
-*   **Interactive System Maps**: D3-powered visualizations of the agent network and swarm dynamics.
+**Confidence: High** (Inferred from the existence of the `CapabilityVector` evolution logic and `Succession` protocols)
+
+---
+
+## TARGET AUDIENCE
+
+### 1. AI System Architects & Researchers
+*   **Profile**: Technical users building multi-agent systems who need a registry to track "sub-brain" specializations.
+*   **Usage**: Mapping capability deltas and observing mutation rates across agent generations.
+*   **Pain Points**: Tracking state across hundreds of autonomous interactions.
+*   **Confidence: Medium** (Evidence: `ARCHITECTURE.md`, `capabilityEngine.ts` complexity)
+
+### 2. Operational Leads (Digital Workforce)
+*   **Profile**: Users automating business/tech workflows that require persistent agent identity (non-technical or semi-technical).
+*   **Usage**: High-level job monitoring via the `SwarmBoard`.
+*   **Pain Points**: Lack of observability in autonomous task routing.
+*   **Confidence: Medium** (Evidence: `SwarmTask` status tracking and `Benchmark` references)
+
+### 3. Narrative & Game Designers
+*   **Profile**: Creative users building persistent NPCs or personalities.
+*   **Usage**: Utilizing the "Succession" protocol to maintain long-term character ethos.
+*   **Pain Points**: Inconsistent character behavior across sessions.
+*   **Confidence: Medium** (Evidence: `PersonaMetadata` including fields like `personality` and `narrative` stubs)
+
+---
+
+## VALUE PROPOSITION
+*   **Agentic Persistence**: Agents are not just prompts; they are Firestore-backed entities with life cycles (Leveling, XP, Reputation).
+*   **Specialization Engine**: The `CapabilityEngine` performs mathematically grounded DNA shifts based on task outcomes, ensuring agents actually "learn" their roles.
+*   **Collaborative Orchestration**: Real-time swarm synchronization allows multiple agents (and potentially multiple users) to observe a single job flow.
+
+---
+
+## CORE FEATURES
+
+### Verified (In Codebase)
+*   **DNA Registry**: Full CRUD for Agents with radar-chart visualization of capabilities.
+*   **Task Decomposition**: AI-driven breakdown of "Jobs" into "SwarmTasks" via Gemini-backed Express proxies.
+*   **Real-time Swarm Sync**: Firebase-backed state management for task progress and agent load.
+*   **Evolutionary Logic**: `capabilityEngine.ts` calculates XP and DNA shifts on task completion.
+
+### Inferred (Partial/Fragmented)
+*   **Sociometric Mapping**: The `relationships` schema exists, but the interactive "Trust Network" graph is partially implemented as a visualizer.
+*   **Legacy Succession**: Inheritance logic exists in `agentService.ts` (`spawnHeir`) but lacks a fully automated UI triggering system.
+
+### Future (From Roadmap)
+*   **Autonomous Feedback Loop**: Writing trust/reputation updates back to Firestore based on human-in-the-loop validation.
+*   **Modular State Architecture**: Moving logic out of the `App.tsx` monolith.

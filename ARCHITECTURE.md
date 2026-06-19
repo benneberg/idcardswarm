@@ -1,28 +1,75 @@
 # Civitas AI: Technical Architecture
 
-## Overview
-Civitas AI is a multi-agent ecosystem management platform built with a full-stack React and Express architecture. It leverages Firebase for real-time state persistence and the Gemini API for agent-driven decision-making and evolutionary logic.
+## HIGH-LEVEL ARCHITECTURE
+Civitas AI utilizes a **Thin-Server Full-Stack Architecture**. 
+*   **Frontend**: Primary orchestration logic resides in the React client, which communicates directly with **Firebase Firestore** for state and **Firebase Auth** for identity.
+*   **Backend**: A lightweight **Express.js** server acts as an AI Proxy to the **Gemini API** for high-compute reasoning tasks (Task Decomposition, Persona Generation) that require server-side secrets.
 
-## System Stack
-*   **Editorially-Styled Frontend**: Built with React 19, Tailwind CSS 4, and Framer Motion for high-fidelity animations.
-*   **Orchestration Backend**: An Express.js server that acts as a proxy for the Gemini API, ensuring secure handling of model interactions and agent generation.
-*   **Real-time Data Layer**: Firebase Firestore provides the primary database, using real-time listeners for instant cross-client synchronization of swarm progress and agent registry updates.
-*   **Identity & Security**: Firebase Authentication manages user-specific agent ecosystems.
+**Confidence: High** (Verified via `App.tsx`, `server.ts`, and `package.json`)
 
-## Core Entities & Data Models
-*   **Agent (Citizen)**: The primary persistent entity. Defined by a `CapabilityVector` (DNA) and `PersonaMetadata`.
-*   **Job**: A high-level goal that is decomposed into smaller `SwarmTasks`.
-*   **SwarmTask**: An individual unit of work assigned to one or more Agents. Includes `complexity`, `confidence`, and `output` fields.
-*   **EntityRelationship**: Tracks the trust and reputation scores between two specific agents within the ecosystem.
+---
 
-## Process Flow: The Succession Protocol
-1.  **Specialization Trigger**: An agent reaches Level 20 through successful task completion.
-2.  **Legacy Authorization**: The user authorizes the "Initialize Heir" protocol.
-3.  **DNA Inheritance**: The system extracts the parent's `CapabilityVector`.
-4.  **Neural Mutation**: Gemini is utilized to calculate a new vector, inheriting ~70% of parental strengths with stochastic refinements.
-5.  **Heir Initialization**: A new Agent entity is created, linked to the parent through a `lineage` reference.
+## COMPONENT BREAKDOWN
 
-## Visual Orchestration
-*   **CapabilityRadar**: D3-driven visualization of an agent's multi-dimensional strengths.
-*   **SwarmBoard**: A Kanban-inspired interface for tracking task state from `pending` to `completed`.
-*   **Sociometric Graph**: A network graph representing the web of trust and collaboration within the agent directory.
+### 1. The Registry (Frontend)
+*   **Logic**: `agentService.ts` manages Agent lifecycle (Create, Update, Level Up).
+*   **Rendering**: `AgentCardItem` and `CapabilityRadar` (D3-powered).
+*   **Source of Truth**: Firestore `/agents` collection.
+
+### 2. The Orchestrator (Backend Proxy)
+*   **Logic**: `server.ts` exposes `/api/swarm/decompose`.
+*   **AI Engine**: `@google/genai` (Gemini-1.5-Flash by default). 
+*   **Function**: Converts a text "Goal" into a JSON array of `SwarmTask` objects.
+
+### 3. The Evolutionary Engine (Logic Tier)
+*   **Module**: `capabilityEngine.ts`.
+*   **Role**: Pure functional math calculating DNA deltas. It ensures that if an agent performs a "Coding" task, its `coding` capability increases relative to task complexity.
+
+### 4. The Real-time Swarm (Data Tier)
+*   **Infrastructure**: Firebase Firestore.
+*   **Mechanism**: Real-time snapshots (`onSnapshot`) ensure that when an agent's task is updated by the system loop, all monitoring clients see the pulse immediately.
+
+---
+
+## DATA FLOW
+
+1.  **Job Initialization**: User submits a "Job" to Express `/api/swarm/decompose`.
+2.  **AI Decomposition**: Gemini returns 3-5 sub-tasks.
+3.  **Persistence**: Sub-tasks are written to Firestore as a sub-collection of the Job.
+4.  **Execution Loop**: `App.tsx` triggers a task heartbeat. The most suitable agent (high capability match) is assigned.
+5.  **Completion**: Upon success, `capabilityEngine.ts` calculates XP gain. Firestore is updated, triggering a UI refresh via listeners.
+
+**State Management**: Mixed. Local React state handles UI toggles; Firestore handles the global system state.
+
+---
+
+## EXTERNAL INTEGRATIONS
+*   **Google Gemini API**: Heart of the "Intelligence" tier.
+*   **Firebase**: Database (Firestore) and Auth.
+*   **Dicebear**: Avatar generation for personas.
+
+---
+
+## DEPLOYMENT MODEL
+*   **Platform**: Designed for Platform-as-a-Service (Cloud Run / Vercel + Firebase).
+*   **Build System**: Vite (Frontend) + esbuild (Backend Server bundle). 
+*   **Validation**: CI/CD ready via standard `npm build` and `npx vitest`.
+
+---
+
+## OBSERVABILITY MODEL
+*   **Basic**: `console.log` based structured logs in `server.ts`.
+*   **Health**: `/api/health` endpoint exists (Verified in Recent Audit).
+*   **Missing**: No centralized error reporting (e.g., Sentry) or performance tracing for Gemini response times.
+
+---
+
+## ARCHITECTURAL RISKS
+1.  **Concurrency Hotspots**: Multiple agents updating the same Job object in Firestore. Currently lacks broad usage of `FieldValue.increment()` (uses local math then writes).
+2.  **Monolithic Client**: `App.tsx` handles business logic that should be in a separate state worker or server-side cron.
+3.  **Auth Gaps**: Relationships collection is currently insufficiently guarded (Identified in Audit).
+
+## RECOMMENDED IMPROVEMENTS
+*   **P0**: Secure `relationships` match rules in `firestore.rules`. (In Progress)
+*   **P1**: Move global execution tick (`setInterval`) from client to a single server-side task worker to prevent multi-tab collisions.
+*   **P2**: Migrate `App.tsx` state to **Zustand** or **Redux** for better observability.
