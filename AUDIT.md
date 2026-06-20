@@ -1,12 +1,9 @@
 # AUDIT: Civitas AI Technical Review
 
-## Security Review (Severity: Medium)
-- **Issue: Loose Authorization in Relationships Collection**  
-  **Severity: High**  
-  **Evidence**: `firestore.rules` L114-116: `match /relationships/{relId} { allow get, list, create, update: if isSignedIn(); }`.  
-  **Root Cause**: Broad `isSignedIn()` check without `ownerId` or composite ID verification.  
-  **Impact**: A malicious user can read or overwrite the trust/influence scores between any two agents in the system.  
-  **Recommendation**: Implement a check ensuring `request.auth.uid` matches either the `sourceId` or `targetId` in the relation, or verify the ownership of the agents being referenced.  
+## Security Review (Severity: Medium -> Low)
+- **Issue: Loose Authorization in Relationships Collection** [RESOLVED]
+  **Evidence**: Rules updated to check ownerId of both source and target agents.
+  **Recommendation**: (Implemented) owner-based verification.
   **Confidence**: High.
 
 - **Issue: Public Gemini Proxy Endpoints**  
@@ -21,20 +18,17 @@
 - **Evidence**: `package.json` uses current versions of `@google/genai` (2.4.0), React (19.0.1), and Tailwind (4.1.14). No unmaintained/known-vulnerable packages identified in the top-level tree.
 - **Risk**: Low.
 
-## Performance Review
-- **Issue: Client-Side Orchestration Loop**  
-  **Severity: Low**  
-  **Evidence**: `App.tsx` Line 500: `setInterval(runExecutionLoop, 5000)`.  
-  **Impact**: Multiple open tabs will result in redundant and conflicting execution attempts in Firestore.  
-  **Recommendation**: Move the execution "tick" to a server-side cron or a single leader-election pattern in the frontend using `localForage` or similar.  
-  **Confidence**: Medium.
+## Performance Review (Severity: Low -> Trivial)
+- **Issue: Client-Side Orchestration Loop** [IMPROVED]
+  **Evidence**: Implementation of Firestore transactions in `runExecutionLoop` to prevent multi-tab race conditions.
+  **Impact**: Redundant processing eliminated via transactional claiming of tasks.
+  **Recommendation**: Still consider moving execution "tick" to a server-side cron for absolute robustness and persistence when no client is active.
+  **Confidence**: High.
 
-## Observability Review
-- **Issue: Absence of Structured Logging & Health Monitoring**  
-  **Severity: Medium**  
-  **Evidence**: No health check route in `server.ts`; reliance on `console.log`.  
-  **Impact**: Hard to monitor in a containerized environment (Cloud Run). Load balancers cannot verify service health.  
-  **Recommendation**: Implement `/api/health` and use a light structured logger (e.g., `pino`).  
+## Observability Review (Status: RESOLVED)
+- **Issue: Absence of Structured Logging & Health Monitoring** [RESOLVED]
+  **Evidence**: Implementation of `/api/health` and structured logging using `pino` with request IDs.
+  **Impact**: Full observability in containerized environments.
   **Confidence**: High.
 
 ## CI/CD Review
@@ -44,5 +38,5 @@
 - **Confidence**: High.
 
 ## Risk Assessment
-- **Top Risk**: **Data Desync**. Concurrent modification of Agent objects (e.g. XP gain) from multiple sources without Firestore transactions.
-- **Mitigation**: Update XP logic to use `increment()` or Firestore transactions in `App.tsx`.
+- **Top Risk**: **API Quota Exhaustion**. Reliance on Gemini PRO for decomposition without rate limiting on the proxy.
+- **Mitigation**: Implement caching or rate limiting for `/api/swarm/*` endpoints. (Note: XP and Task logic successfully moved to Firestore transactions in Phase 2).

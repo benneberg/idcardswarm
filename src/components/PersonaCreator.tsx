@@ -1,16 +1,24 @@
 import React, { useState } from 'react';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { motion } from 'motion/react';
-import { UserPlus, Save, X, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { UserPlus, Save, X, Sparkles, ChevronRight, ChevronLeft, User, Briefcase, Compass, Cpu } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
   onSuccess: () => void;
 }
 
+const STEPS = [
+  { id: 'demographics', title: 'Demographics', icon: User },
+  { id: 'background', title: 'Background', icon: Briefcase },
+  { id: 'needs', title: 'Needs', icon: Compass },
+  { id: 'proficiency', title: 'Proficiency', icon: Cpu },
+];
+
 export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
     name: '',
     age: 25,
@@ -20,6 +28,7 @@ export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
     motivations: '',
     pain_points: '',
     experience: 'mid' as 'junior' | 'mid' | 'senior' | 'staff',
+    tech_proficiency: 50,
     personality: {
       openness: 50,
       conscientiousness: 50,
@@ -28,6 +37,9 @@ export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
       agreeableness: 50
     }
   });
+
+  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
+  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 0));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +53,7 @@ export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
       await addDoc(collection(db, 'agents'), {
         role: formData.role || formData.occupation,
         mode: 'simulator',
-        skills: motivationsArr,
+        skills: [...motivationsArr, formData.occupation],
         experience_level: formData.experience,
         behavior_rules: [`Operate as ${formData.name}`, 'Maintain ecosystem consistency'],
         ownerId: auth.currentUser.uid,
@@ -60,6 +72,7 @@ export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
           bio: formData.bio,
           motivations: motivationsArr,
           pain_points: painPointsArr,
+          tech_proficiency: formData.tech_proficiency,
           personality: {
             openness: formData.personality.openness,
             conscientiousness: formData.personality.conscientiousness,
@@ -69,12 +82,12 @@ export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
           }
         },
         capability_vector: {
-          creativity: 0.5,
-          strategic_thinking: 0.5,
-          technical_depth: 0.5,
-          communication: 0.5,
-          leadership: 0.5,
-          risk_tolerance: 0.5,
+          creativity: formData.personality.openness / 100,
+          strategic_thinking: formData.personality.conscientiousness / 100,
+          technical_depth: formData.tech_proficiency / 100,
+          communication: formData.personality.extraversion / 100,
+          leadership: (formData.personality.extraversion + formData.personality.conscientiousness) / 200,
+          risk_tolerance: formData.personality.risk_tolerance / 100,
           research_ability: 0.5,
           reliability: 0.5,
           curiosity: 0.5,
@@ -93,156 +106,257 @@ export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
     }
   };
 
+  const currentStepData = STEPS[currentStep];
+
   return (
     <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-white border-4 border-black p-8 max-w-2xl w-full editorial-shadow relative overflow-hidden"
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      className="bg-white border-4 border-black p-0 max-w-4xl w-full editorial-shadow relative overflow-hidden flex flex-col md:flex-row min-h-[600px]"
     >
-      <div className="absolute top-0 right-0 p-4">
-        <button onClick={onClose} className="hover:rotate-90 transition-transform">
+      {/* Sidebar Progress */}
+      <div className="w-full md:w-64 bg-black text-white p-8 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-12">
+            <UserPlus size={24} className="text-blue-400" />
+            <h2 className="text-xl font-serif font-bold tracking-tighter uppercase">Forge</h2>
+          </div>
+
+          <div className="space-y-8">
+            {STEPS.map((step, idx) => {
+              const Icon = step.icon;
+              const isActive = idx === currentStep;
+              const isCompleted = idx < currentStep;
+              return (
+                <div key={step.id} className="flex items-center gap-4 group">
+                  <div className={`
+                    w-8 h-8 flex items-center justify-center border-2 transition-all
+                    ${isActive ? 'bg-blue-500 border-blue-500 scale-110 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : isCompleted ? 'bg-white border-white text-black' : 'border-zinc-700 opacity-40'}
+                  `}>
+                    {isCompleted ? <Save size={14} /> : <Icon size={14} />}
+                  </div>
+                  <div className={`transition-opacity ${isActive ? 'opacity-100' : 'opacity-40'}`}>
+                    <p className="text-[8px] font-mono uppercase tracking-[0.2em] mb-1">Step 0{idx + 1}</p>
+                    <p className="text-[10px] font-mono uppercase font-bold tracking-widest">{step.title}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-12 pt-8 border-t border-zinc-800">
+          <p className="text-[10px] font-mono uppercase tracking-widest opacity-40 italic">Civitas Initialization // Protocol v4.0</p>
+        </div>
+      </div>
+
+      {/* Main Form Area */}
+      <div className="flex-1 p-12 flex flex-col justify-between bg-zinc-50 relative">
+        <button onClick={onClose} className="absolute top-8 right-8 hover:rotate-90 transition-transform z-10">
           <X size={24} />
         </button>
-      </div>
 
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 bg-black flex items-center justify-center text-white">
-          <UserPlus size={24} />
-        </div>
-        <div>
-          <h2 className="text-3xl font-serif font-bold tracking-tighter uppercase">Forge New Identity</h2>
-          <p className="text-[10px] font-mono uppercase tracking-widest opacity-40 italic">Entity Initialization // Civitas Registry</p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6 max-h-[60vh] overflow-y-auto px-1">
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Digital Name</label>
-            <input 
-              required
-              className="w-full border-b-2 border-black/10 focus:border-black outline-none py-2 text-xl font-serif bg-transparent"
-              placeholder="e.g. Elena Vance"
-              value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Maturity Age</label>
-            <input 
-              type="number"
-              required
-              className="w-full border-b-2 border-black/10 focus:border-black outline-none py-2 text-xl font-serif bg-transparent"
-              value={formData.age}
-              onChange={e => setFormData({ ...formData, age: Number(e.target.value) })}
-            />
-          </div>
-        </div>
-
-        {/* Personality Traits */}
-        <div className="space-y-4 border-2 border-black/5 p-6 bg-stone-50">
-          <label className="text-[10px] font-mono uppercase font-bold tracking-widest block mb-4">Core Personality Matrix</label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-            {Object.entries(formData.personality).map(([trait, value]) => (
-              <div key={trait} className="space-y-2">
-                <div className="flex justify-between text-[8px] font-mono uppercase">
-                  <span>{trait.replace('_', ' ')}</span>
-                  <span>{value}%</span>
+        <form onSubmit={handleSubmit} className="h-full flex flex-col">
+          <div className="flex-1">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentStep}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-8"
+              >
+                <div>
+                  <h3 className="text-4xl font-serif font-bold tracking-tight mb-2">{currentStepData.title}</h3>
+                  <p className="text-xs font-mono uppercase opacity-40 tracking-widest">
+                    {currentStep === 0 && "Define the fundamental identity parameters."}
+                    {currentStep === 1 && "Establish the narrative and expertise levels."}
+                    {currentStep === 2 && "Map the behavioral drivers and friction points."}
+                    {currentStep === 3 && "Configure the cognitive matrix and tech baseline."}
+                  </p>
                 </div>
-                <input 
-                  type="range"
-                  min="0"
-                  max="100"
-                  className="w-full h-1 bg-black/10 appearance-none cursor-pointer accent-black"
-                  value={value}
-                  onChange={e => setFormData({
-                    ...formData,
-                    personality: { ...formData.personality, [trait]: Number(e.target.value) }
-                  })}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Core Occupation</label>
-            <input 
-              required
-              className="w-full border-b-2 border-black/10 focus:border-black outline-none py-2 text-sm font-mono"
-              placeholder="e.g. Neural Architect"
-              value={formData.occupation}
-              onChange={e => setFormData({ ...formData, occupation: e.target.value })}
-            />
+                <div className="space-y-6">
+                  {currentStep === 0 && (
+                    <div className="grid grid-cols-1 gap-8">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Digital Name</label>
+                        <input 
+                          required
+                          autoFocus
+                          className="w-full border-b-4 border-black/5 focus:border-black outline-none py-4 text-3xl font-serif bg-transparent transition-all"
+                          placeholder="e.g. Elena Vance"
+                          value={formData.name}
+                          onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Maturity Age</label>
+                          <input 
+                            type="number"
+                            required
+                            className="w-full border-b-2 border-black/10 focus:border-black outline-none py-2 text-xl font-serif bg-transparent"
+                            value={formData.age}
+                            onChange={e => setFormData({ ...formData, age: Number(e.target.value) })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Core Occupation</label>
+                          <input 
+                            required
+                            className="w-full border-b-2 border-black/10 focus:border-black outline-none py-2 text-xl font-serif bg-transparent"
+                            placeholder="e.g. Architect"
+                            value={formData.occupation}
+                            onChange={e => setFormData({ ...formData, occupation: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 1 && (
+                    <div className="space-y-8">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Simulation Complexity</label>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                          {(['junior', 'mid', 'senior', 'staff'] as const).map(lvl => (
+                            <button
+                              key={lvl}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, experience: lvl })}
+                              className={`p-4 border-2 font-mono text-[10px] uppercase tracking-widest transition-all ${formData.experience === lvl ? 'bg-black text-white border-black' : 'bg-white border-black/10 opacity-60 hover:opacity-100'}`}
+                            >
+                              {lvl}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Behavioral Bio & Narrative</label>
+                        <textarea 
+                          required
+                          rows={6}
+                          className="w-full border-2 border-black/5 focus:border-black/20 outline-none p-6 text-lg font-serif leading-relaxed italic bg-white"
+                          placeholder="Describe the inner narrative and worldview..."
+                          value={formData.bio}
+                          onChange={e => setFormData({ ...formData, bio: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 2 && (
+                    <div className="space-y-8">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-mono uppercase font-bold tracking-widest flex items-center gap-2">
+                          <Sparkles size={10} className="text-yellow-500" /> Primary Motivations
+                        </label>
+                        <p className="text-[10px] opacity-40 mb-2">Separate multiple drivers with commas.</p>
+                        <input 
+                          className="w-full border-b-2 border-black/10 focus:border-black outline-none py-4 text-xl font-serif bg-transparent"
+                          placeholder="Autonomy, Deep Work, Recognition"
+                          value={formData.motivations}
+                          onChange={e => setFormData({ ...formData, motivations: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Systemic Pain Points</label>
+                        <p className="text-[10px] opacity-40 mb-2">Define the primary stressors or obstacles.</p>
+                        <input 
+                          className="w-full border-b-2 border-black/10 focus:border-black outline-none py-4 text-xl font-serif bg-transparent"
+                          placeholder="Inefficiency, Noise, Isolation"
+                          value={formData.pain_points}
+                          onChange={e => setFormData({ ...formData, pain_points: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 3 && (
+                    <div className="space-y-8">
+                      <div className="space-y-2 bg-black text-white p-8 rounded-sm">
+                        <div className="flex justify-between items-center mb-6">
+                          <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Technological Proficiency</label>
+                          <span className="text-xl font-mono">{formData.tech_proficiency}%</span>
+                        </div>
+                        <input 
+                          type="range"
+                          min="0"
+                          max="100"
+                          className="w-full h-2 bg-white/20 appearance-none cursor-pointer accent-blue-400"
+                          value={formData.tech_proficiency}
+                          onChange={e => setFormData({ ...formData, tech_proficiency: Number(e.target.value) })}
+                        />
+                        <div className="flex justify-between text-[8px] font-mono uppercase opacity-40 mt-2">
+                          <span>Novice</span>
+                          <span>Expert</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        <label className="text-[10px] font-mono uppercase font-bold tracking-widest block">Personality Matrix (OCEAN)</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 bg-white p-6 border border-black/5">
+                          {Object.entries(formData.personality).map(([trait, value]) => (
+                            <div key={trait} className="space-y-2">
+                              <div className="flex justify-between text-[8px] font-mono uppercase">
+                                <span>{trait.replace('_', ' ')}</span>
+                                <span>{value}%</span>
+                              </div>
+                              <input 
+                                type="range"
+                                min="0"
+                                max="100"
+                                className="w-full h-1 bg-black/10 appearance-none cursor-pointer accent-black"
+                                value={value}
+                                onChange={e => setFormData({
+                                  ...formData,
+                                  personality: { ...formData.personality, [trait]: Number(e.target.value) }
+                                })}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Simulation Level</label>
-            <select 
-              className="w-full border-b-2 border-black/10 focus:border-black outline-none py-2 text-sm font-mono bg-transparent"
-              value={formData.experience}
-              onChange={e => setFormData({ ...formData, experience: e.target.value as any })}
+
+          <div className="pt-12 flex justify-between items-center border-t border-black/5">
+            <button 
+              type="button"
+              onClick={currentStep === 0 ? onClose : prevStep}
+              className="flex items-center gap-2 px-6 py-3 font-mono text-[10px] uppercase tracking-widest border border-black/10 hover:bg-black/5 transition-all"
             >
-              <option value="junior">Junior // Initialized</option>
-              <option value="mid">Mid // Operational</option>
-              <option value="senior">Senior // Optimized</option>
-              <option value="staff">Staff // Sovereign</option>
-            </select>
+              <ChevronLeft size={14} />
+              {currentStep === 0 ? "Abort" : "Back"}
+            </button>
+            
+            {currentStep < STEPS.length - 1 ? (
+              <button 
+                type="button"
+                onClick={nextStep}
+                className="flex items-center gap-2 px-10 py-3 font-mono text-[10px] uppercase tracking-widest bg-black text-white hover:opacity-90 transition-all"
+              >
+                Continue
+                <ChevronRight size={14} />
+              </button>
+            ) : (
+              <button 
+                disabled={loading}
+                className="flex items-center gap-2 px-10 py-3 font-mono text-[10px] uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+              >
+                {loading ? <div className="animate-spin h-3 w-3 border-2 border-white/20 border-t-white rounded-full" /> : <Save size={14} />}
+                Forge Identity
+              </button>
+            )}
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Behavioral Bio</label>
-          <textarea 
-            required
-            rows={3}
-            className="w-full border-2 border-black/5 focus:border-black/20 outline-none p-4 text-sm font-serif leading-relaxed italic"
-            placeholder="Describe the inner narrative and worldview..."
-            value={formData.bio}
-            onChange={e => setFormData({ ...formData, bio: e.target.value })}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase font-bold tracking-widest flex items-center gap-2">
-              <Sparkles size={10} /> Primary Motivations (Comma separated)
-            </label>
-            <input 
-              className="w-full border-b-2 border-black/10 focus:border-black outline-none py-2 text-xs font-mono"
-              placeholder="Autonomy, Deep Work, ROI"
-              value={formData.motivations}
-              onChange={e => setFormData({ ...formData, motivations: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Pain Points (Comma separated)</label>
-            <input 
-              className="w-full border-b-2 border-black/10 focus:border-black outline-none py-2 text-xs font-mono"
-              placeholder="Information Overload, Bureaucracy"
-              value={formData.pain_points}
-              onChange={e => setFormData({ ...formData, pain_points: e.target.value })}
-            />
-          </div>
-        </div>
-
-        <div className="pt-6 flex justify-end gap-4">
-          <button 
-            type="button"
-            onClick={onClose}
-            className="px-8 py-3 font-mono text-[10px] uppercase tracking-widest border border-black hover:bg-black/5 transition-all"
-          >
-            Cancel
-          </button>
-          <button 
-            disabled={loading}
-            className="px-8 py-3 font-mono text-[10px] uppercase tracking-widest bg-black text-white hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-2"
-          >
-            {loading ? <div className="animate-spin h-3 w-3 border-2 border-white/20 border-t-white rounded-full" /> : <Save size={14} />}
-            Initialize in Civitas
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </motion.div>
   );
 };

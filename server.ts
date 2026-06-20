@@ -1,8 +1,17 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
+import { ai, MODELS } from "./src/lib/gemini";
+import { Type } from "@google/genai";
 import dotenv from "dotenv";
+import pino from "pino";
+
+const logger = pino({
+  transport: {
+    target: 'pino-pretty',
+    options: { colorize: true }
+  }
+});
 
 dotenv.config();
 
@@ -11,29 +20,17 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Initialize Gemini (Server-side only)
-const ai = new GoogleGenAI({ 
-  apiKey: process.env.GEMINI_API_KEY || "",
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
-  }
-});
-
-const MODELS = {
-  FLASH: "gemini-3.5-flash",
-  PRO: "gemini-3.1-pro-preview",
-};
-
 // API Routes
 app.get("/api/health", (req, res) => {
+  logger.info({ path: "/api/health" }, "Health check pulse");
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 app.post("/api/swarm/decompose", async (req, res) => {
+  const requestId = Math.random().toString(36).substring(7);
   try {
     const { goal, team } = req.body;
+    logger.info({ requestId, goal }, "Decomposing goal into tasks");
     
     const prompt = `
       You are a CTO Agent (Orchestrator). 
@@ -50,7 +47,7 @@ app.post("/api/swarm/decompose", async (req, res) => {
       - type (string)
       - dependencies (array of task ids)
       - routing_tags (array of strings)
-      - assigned_agent_ids (array of strings from the team provided)
+      - assigned_agents (array of strings specifically IDs from the team provided)
     `;
 
     const response = await ai.models.generateContent({
@@ -68,24 +65,28 @@ app.post("/api/swarm/decompose", async (req, res) => {
               type: { type: Type.STRING },
               dependencies: { type: Type.ARRAY, items: { type: Type.STRING } },
               routing_tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-              assigned_agent_ids: { type: Type.ARRAY, items: { type: Type.STRING } }
+              assigned_agents: { type: Type.ARRAY, items: { type: Type.STRING } }
             },
-            required: ["id", "description", "type", "dependencies", "routing_tags", "assigned_agent_ids"]
+            required: ["id", "description", "type", "dependencies", "routing_tags", "assigned_agents"]
           }
         }
       }
     });
 
-    res.json(JSON.parse(response.text));
+    const tasks = JSON.parse(response.text || "[]");
+    logger.info({ requestId, taskCount: tasks.length }, "Decomposition successful");
+    res.json(tasks);
   } catch (error: any) {
-    console.error("Decomposition error:", error);
+    logger.error({ requestId, error: error.message }, "Decomposition failed");
     res.status(500).json({ error: error.message });
   }
 });
 
 app.post("/api/swarm/execute", async (req, res) => {
+  const requestId = Math.random().toString(36).substring(7);
   try {
     const { task, agent, context } = req.body;
+    logger.info({ requestId, agentId: agent.id, taskId: task.id }, "Executing task");
     
     const prompt = `
       ROLE: ${agent.role}
@@ -104,16 +105,19 @@ app.post("/api/swarm/execute", async (req, res) => {
       contents: prompt,
     });
 
+    logger.info({ requestId, status: "completed" }, "Task execution finished");
     res.json({ content: response.text });
   } catch (error: any) {
-    console.error("Execution error:", error);
+    logger.error({ requestId, error: error.message }, "Task execution failed");
     res.status(500).json({ error: error.message });
   }
 });
 
 app.post("/api/swarm/evaluate", async (req, res) => {
+  const requestId = Math.random().toString(36).substring(7);
   try {
     const { task, artifact, critic } = req.body;
+    logger.info({ requestId, criticId: critic.id, taskId: task.id }, "Evaluating artifact");
     
     const prompt = `
       CRITIC ROLE: ${critic.role}
@@ -170,9 +174,11 @@ app.post("/api/swarm/evaluate", async (req, res) => {
       }
     });
 
-    res.json(JSON.parse(response.text));
+    const evalData = JSON.parse(response.text || "{}");
+    logger.info({ requestId, score: evalData.score }, "Evaluation complete");
+    res.json(evalData);
   } catch (error: any) {
-    console.error("Evaluation error:", error);
+    logger.error({ requestId, error: error.message }, "Evaluation failed");
     res.status(500).json({ error: error.message });
   }
 });
@@ -194,7 +200,7 @@ async function startApp() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    logger.info({ port: PORT, env: process.env.NODE_ENV || "development" }, "Civitas Server Node Booted");
   });
 }
 

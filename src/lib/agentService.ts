@@ -61,8 +61,8 @@ export const spawnOffspring = async (parent: AgentCard) => {
       },
       avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${newId}`
     },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   };
 
   const docRef = doc(db, 'agents', newId);

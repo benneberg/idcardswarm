@@ -2,15 +2,27 @@ import React from 'react';
 import { AgentCard } from '../types';
 import { motion } from 'motion/react';
 
+import { EntityRelationship } from '../types';
+
 interface Props {
   agent: AgentCard;
+  relationships?: EntityRelationship[];
   onSelect?: (agent: AgentCard) => void;
+  onCompare?: (agent: AgentCard) => void;
   className?: string;
   selected?: boolean;
   status?: 'Available' | 'Busy' | 'In Training';
 }
 
-export const AgentCardItem: React.FC<Props> = ({ agent, onSelect, className = '', selected, status = 'Available' }) => {
+export const AgentCardItem: React.FC<Props> = ({ 
+  agent, 
+  relationships = [], 
+  onSelect, 
+  onCompare,
+  className = '', 
+  selected, 
+  status = 'Available' 
+}) => {
   const isSimulator = agent.mode === 'simulator';
   const isCritic = agent.mode === 'critic';
   const persona = agent.persona_metadata;
@@ -56,6 +68,12 @@ export const AgentCardItem: React.FC<Props> = ({ agent, onSelect, className = ''
         <div className="flex justify-between font-mono text-[10px] mb-4">
           <span className={isSimulator ? 'opacity-60' : ''}>CITIZEN_{agent.id.slice(0, 8).toUpperCase()}</span>
           <div className="flex gap-2 items-center">
+             {relationships.length > 0 && (
+               <span className="flex items-center gap-1 opacity-50 px-2 border-r border-black/10">
+                 <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                 {relationships.length} CONNS
+               </span>
+             )}
              <span className="px-2 bg-stone-200 text-stone-600 uppercase text-[8px] font-bold tracking-widest">{lifecycle}</span>
              {(agent.lineage?.generation || 1) > 1 && (
                <span className="px-2 bg-blue-100 text-blue-600 uppercase text-[8px] font-bold tracking-widest">GEN {agent.lineage?.generation}</span>
@@ -151,10 +169,27 @@ export const AgentCardItem: React.FC<Props> = ({ agent, onSelect, className = ''
         </p>
       </div>
 
-      <div className={`border-t pt-3 mt-4 text-[10px] leading-relaxed font-mono uppercase tracking-tighter ${
-        isSimulator ? 'border-zinc-700 opacity-80' : 'border-black'
-      }`}>
-        RULE: {agent.behavior_rules[0] || 'Executing assigned protocols.'}
+      <div className="flex justify-between items-center border-t border-black/10 pt-4 mt-4">
+        <div className={`text-[10px] leading-relaxed font-mono uppercase tracking-tighter ${
+          isSimulator ? 'border-zinc-700 opacity-80' : 'text-black'
+        }`}>
+          RULE: {agent.behavior_rules[0] || 'Executing protocol.'}
+        </div>
+        <button 
+          onClick={(e) => { e.stopPropagation(); onCompare?.(agent); }}
+          className={`p-1.5 border transition-all ${
+            selected ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white border-black hover:bg-stone-100'
+          }`}
+          title="Add to Comparison"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="16 3 21 3 21 8"></polyline>
+            <line x1="4" y1="20" x2="21" y2="3"></line>
+            <polyline points="21 16 21 21 16 21"></polyline>
+            <line x1="15" y1="15" x2="21" y2="21"></line>
+            <line x1="4" y1="4" x2="9" y2="9"></line>
+          </svg>
+        </button>
       </div>
     </motion.div>
   );

@@ -13,6 +13,7 @@ export interface PersonaMetadata {
   pain_points: string[];
   avatar_url?: string;
   contact?: string;
+  tech_proficiency: number; // 0-100
   personality: {
     openness: number;
     conscientiousness: number;

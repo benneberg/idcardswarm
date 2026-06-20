@@ -40,6 +40,7 @@ export const USER_PERSONAS: UserPersona[] = [
       conscientiousness: 0.95,
       risk_tolerance: 0.4,
     },
+    tech_proficiency: 95,
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex'
   },
   {
@@ -73,6 +74,7 @@ export const USER_PERSONAS: UserPersona[] = [
       conscientiousness: 0.7,
       risk_tolerance: 0.8,
     },
+    tech_proficiency: 80,
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah'
   },
   {
@@ -106,6 +108,7 @@ export const USER_PERSONAS: UserPersona[] = [
       conscientiousness: 0.9,
       risk_tolerance: 0.3,
     },
+    tech_proficiency: 60,
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David'
   },
   {
@@ -139,6 +142,7 @@ export const USER_PERSONAS: UserPersona[] = [
       conscientiousness: 0.85,
       risk_tolerance: 0.2,
     },
+    tech_proficiency: 75,
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Elena'
   },
   {
@@ -172,6 +176,7 @@ export const USER_PERSONAS: UserPersona[] = [
       conscientiousness: 0.6,
       risk_tolerance: 0.9,
     },
+    tech_proficiency: 90,
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marcus'
   }
 ];

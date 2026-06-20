@@ -113,15 +113,17 @@ service cloud.firestore {
     // Relationships
     match /relationships/{relId} {
       allow get: if isSignedIn() && (
-        resource.data.sourceId == request.auth.uid || 
-        resource.data.targetId == request.auth.uid || 
-        get(/databases/$(database)/documents/agents/$(resource.data.sourceId)).data.ownerId == request.auth.uid
+        get(/databases/$(database)/documents/agents/$(resource.data.sourceId)).data.ownerId == request.auth.uid || 
+        get(/databases/$(database)/documents/agents/$(resource.data.targetId)).data.ownerId == request.auth.uid
       );
       allow list: if isSignedIn(); 
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && (
+        get(/databases/$(database)/documents/agents/$(incoming().sourceId)).data.ownerId == request.auth.uid || 
+        get(/databases/$(database)/documents/agents/$(incoming().targetId)).data.ownerId == request.auth.uid
+      );
       allow update: if isSignedIn() && (
-        existing().sourceId == request.auth.uid || 
-        get(/databases/$(database)/documents/agents/$(existing().sourceId)).data.ownerId == request.auth.uid
+        get(/databases/$(database)/documents/agents/$(existing().sourceId)).data.ownerId == request.auth.uid || 
+        get(/databases/$(database)/documents/agents/$(existing().targetId)).data.ownerId == request.auth.uid
       );
     }
   }

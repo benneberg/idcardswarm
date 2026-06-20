@@ -17,7 +17,8 @@ export const SEED_PERSONAS: Partial<AgentCard>[] = [
       motivations: ['Autonomy', 'Deep Work', 'Cutting-edge Tech'],
       pain_points: ['Unreliable Internet', 'Timezone Fragmentation', 'Lack of Physical Community'],
       avatar_url: '/src/assets/images/persona_dev_nomad_1780886791273.png',
-      personality: { openness: 90, conscientiousness: 85, risk_tolerance: 75, extraversion: 60, agreeableness: 70 }
+      personality: { openness: 90, conscientiousness: 85, risk_tolerance: 75, extraversion: 60, agreeableness: 70 },
+      tech_proficiency: 95
     },
     capability_vector: { 
       creativity: 0.8, 
@@ -50,7 +51,8 @@ export const SEED_PERSONAS: Partial<AgentCard>[] = [
       motivations: ['Authenticity', 'Community Building', 'Tangible Results'],
       pain_points: ['Rising Ingredient Costs', 'Digital Complexity', 'Late Night exhaustion'],
       avatar_url: '/src/assets/images/persona_bakery_owner_1780886807203.png',
-      personality: { openness: 70, conscientiousness: 95, risk_tolerance: 40, extraversion: 75, agreeableness: 90 }
+      personality: { openness: 70, conscientiousness: 95, risk_tolerance: 40, extraversion: 75, agreeableness: 90 },
+      tech_proficiency: 40
     },
     capability_vector: { 
       creativity: 0.75, 
@@ -83,7 +85,8 @@ export const SEED_PERSONAS: Partial<AgentCard>[] = [
       motivations: ['Efficiency', 'Market Dominance', 'Clear ROI'],
       pain_points: ['Information Overload', 'Slow Implementation', 'Bureaucracy'],
       avatar_url: '/src/assets/images/persona_corporate_exec_1780886822894.png',
-      personality: { openness: 60, conscientiousness: 98, risk_tolerance: 50, extraversion: 85, agreeableness: 50 }
+      personality: { openness: 60, conscientiousness: 98, risk_tolerance: 50, extraversion: 85, agreeableness: 50 },
+      tech_proficiency: 65
     },
     capability_vector: { 
       creativity: 0.6, 
@@ -116,7 +119,8 @@ export const SEED_PERSONAS: Partial<AgentCard>[] = [
       motivations: ['Self-expression', 'Social Justice', 'Creative Autonomy'],
       pain_points: ['Student Debt', 'Algorithm Bias', 'Burnout'],
       avatar_url: '/src/assets/images/persona_student_artist_1780886835620.png',
-      personality: { openness: 98, conscientiousness: 60, risk_tolerance: 85, extraversion: 70, agreeableness: 80 }
+      personality: { openness: 98, conscientiousness: 60, risk_tolerance: 85, extraversion: 70, agreeableness: 80 },
+      tech_proficiency: 85
     },
     capability_vector: { 
       creativity: 0.98, 
@@ -145,7 +149,8 @@ export const SEED_PERSONAS: Partial<AgentCard>[] = [
       motivations: ['Preserving History', 'Lifelong Learning', 'Helping Others'],
       pain_points: ['Tech Obsolescence', 'Privacy Concerns', 'Complex Interfaces'],
       avatar_url: '/src/assets/images/persona_retired_teacher_1780886850458.png',
-      personality: { openness: 75, conscientiousness: 90, risk_tolerance: 20, extraversion: 65, agreeableness: 98 }
+      personality: { openness: 75, conscientiousness: 90, risk_tolerance: 20, extraversion: 65, agreeableness: 98 },
+      tech_proficiency: 30
     },
     capability_vector: { 
       creativity: 0.65, 

@@ -12,496 +12,72 @@ import { SwarmVisualizer } from './components/SwarmVisualizer.tsx';
 import { PersonaCreator } from './components/PersonaCreator.tsx';
 import { ArchetypeSelector } from './components/ArchetypeSelector.tsx';
 import { SummaryDashboard } from './components/SummaryDashboard.tsx';
-import { AgentLog } from './components/AgentLog.tsx';
 import { ComparisonDashboard } from './components/ComparisonDashboard.tsx';
 import { PersonaComparisonTable } from './components/PersonaComparisonTable.tsx';
 import { AffinityMapper } from './components/AffinityMapper.tsx';
+import { AgentLog } from './components/AgentLog.tsx';
 import { USER_PERSONAS, UserPersona } from './data/userPersonas.ts';
-import { 
-  collection, 
-  onSnapshot, 
-  addDoc, 
-  query, 
-  orderBy, 
-  where,
-  setDoc,
-  doc,
-  getDoc,
-  collectionGroup,
-  updateDoc,
-  serverTimestamp
-} from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from './lib/firebase.ts';
-import { computeCapabilityDeltas } from './lib/capabilityEngine';
-import { spawnOffspring } from './lib/agentService';
+import { spawnOffspring } from './lib/agentService.ts';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
   GoogleAuthProvider, 
   signOut 
 } from 'firebase/auth';
-import type { AgentCard, SwarmJob, SwarmTask, EntityRelationship } from './types.ts';
-import { SEED_PERSONAS } from './data/seedPersonas.ts';
+import { auth } from './lib/firebase.ts';
+import type { AgentCard } from './types.ts';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, ClipboardList, Settings, Loader2, Share2, Plus, X, GitMerge, AlertCircle, GitBranch, Search } from 'lucide-react';
+import { Users, ClipboardList, Settings, Loader2, Share2, X, Search, Plus, AlertCircle, GitBranch } from 'lucide-react';
+
+// Modular Hooks
+import { useAgentRegistry } from './hooks/useAgentRegistry';
+import { useSwarmManager } from './hooks/useSwarmManager';
+import { getLifecycleStage } from './lib/utils';
 
 export default function App() {
   const [view, setView] = useState<'agents' | 'swarm' | 'jobs' | 'visualizer' | 'insights'>('agents');
-  const [agents, setAgents] = useState<AgentCard[]>([]);
-  const [user, setUser] = useState(auth.currentUser);
-  const [loading, setLoading] = useState(true);
-  const [activeJob, setActiveJob] = useState<SwarmJob | undefined>();
-  const [tasks, setTasks] = useState<SwarmTask[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [legacyAgent, setLegacyAgent] = useState<AgentCard | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterMode, setFilterMode] = useState<'all' | 'executor' | 'critic'>('all');
+  const [selectedPersona, setSelectedPersona] = useState<UserPersona | null>(null);
   const [showCreator, setShowCreator] = useState(false);
   const [selectedLogAgent, setSelectedLogAgent] = useState<AgentCard | null>(null);
   const [selectedForComparison, setSelectedForComparison] = useState<AgentCard[]>([]);
-  const [legacyAgent, setLegacyAgent] = useState<AgentCard | null>(null);
-  const [allJobs, setAllJobs] = useState<SwarmJob[]>([]);
-  const [allTasks, setAllTasks] = useState<SwarmTask[]>([]);
-  const [allRelationships, setAllRelationships] = useState<EntityRelationship[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserPersonas, setSelectedUserPersonas] = useState<UserPersona[]>([]);
 
-  const getLifecycleStage = (level: number, currentStage: string): string => {
-    if (level >= 20) return 'legacy';
-    if (level >= 15) return 'mentorship';
-    if (level >= 10) return 'leadership';
-    if (level >= 5) return 'collaboration';
-    if (level >= 2) return 'learning';
-    return currentStage || 'initialization';
-  };
-
-  const getAgentStatus = (agentId: string) => {
-    const activeTask = allTasks.find(t => t.assigned_agents.includes(agentId) && t.status === 'in_progress');
-    if (activeTask) return 'Busy';
-    if (agentId.startsWith('agent_seed')) return 'Available';
-    return 'Available';
-  };
-
-  const handleComparisonToggle = (agent: AgentCard) => {
-    setSelectedForComparison(prev => {
-      if (prev.find(a => a.id === agent.id)) {
-        return prev.filter(a => a.id !== agent.id);
-      }
-      if (prev.length >= 2) return [prev[1], agent];
-      return [...prev, agent];
-    });
-  };
-
+  // Authentication
   useEffect(() => {
-    if (!user) return;
-    const qJobs = query(collection(db, 'jobs'), where('userId', '==', user.uid));
-    const unsubJobs = onSnapshot(qJobs, (snap) => {
-      setAllJobs(snap.docs.map(d => ({ ...d.data(), id: d.id } as SwarmJob)));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'jobs');
-    });
-    
-    return () => unsubJobs();
-  }, [user]);
-
-  useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      if (!u) {
-        setLoading(false);
-      }
-    });
+    const unsubAuth = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsubAuth();
   }, []);
 
   const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (e) {
-      console.error('Login failed:', e);
-    }
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { console.error('Login failed:', e); }
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (e) {
-      console.error('Logout failed:', e);
-    }
+    try { await signOut(auth); } catch (e) { console.error('Logout failed:', e); }
   };
 
-  useEffect(() => {
-    if (!user) return;
+  // Logic Registry
+  const { agents, loading: registryLoading } = useAgentRegistry(user);
+  const { 
+    jobs, 
+    activeJob, 
+    setActiveJob, 
+    tasks, 
+    allTasks, 
+    allRelationships, 
+    handleStartJob 
+  } = useSwarmManager(user, agents, getLifecycleStage, setLegacyAgent);
 
-    // Listen to Agents
-    const qAgents = query(collection(db, 'agents'));
-    const unsubAgents = onSnapshot(qAgents, (snapshot) => {
-      const docs = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as AgentCard));
-      setAgents(docs);
-      
-      // Seed if empty
-      if (docs.length === 0) {
-        seedInitialAgents();
-      }
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'agents');
-      setLoading(false);
-    });
+  const filteredAgents = agents
+    .filter(a => filterMode === 'all' || a.mode === filterMode)
+    .filter(a => a.role.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                 a.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())));
 
-    // Listen to Relationships
-    const unsubRels = onSnapshot(collection(db, 'relationships'), (snap) => {
-      setAllRelationships(snap.docs.map(d => d.data() as EntityRelationship));
-    }, (error) => {
-       handleFirestoreError(error, OperationType.LIST, 'relationships');
-    });
-
-    // Listen to all Tasks (Global Stats)
-    const qAllTasks = query(collectionGroup(db, 'tasks'), where('userId', '==', user.uid));
-    const unsubAllTasks = onSnapshot(qAllTasks, (snap) => {
-      setAllTasks(snap.docs.map(d => ({ ...d.data(), id: d.id } as SwarmTask)));
-    });
-
-    return () => {
-      unsubAgents();
-      unsubRels();
-      unsubAllTasks();
-    };
-  }, [user]);
-
-  const seedInitialAgents = async () => {
-    const defaultAgents: Partial<AgentCard>[] = [
-      {
-        id: 'arch_001',
-        role: 'Systems Architect',
-        mode: 'executor',
-        skills: ['Architecture', 'Scaling', 'Performance'],
-        behavior_rules: ['Prefer simple architecture', 'Focus on scalability'],
-        strengths: ['API Design', 'Cloud Infra'],
-        experience_level: 'staff',
-        tools: ['diagrams', 'docs'],
-        ownerId: user.uid
-      },
-      {
-        id: 'sec_lens_001',
-        role: 'Security Analyst',
-        mode: 'critic',
-        skills: ['Vulnerabilities', 'Encryption', 'Auth'],
-        behavior_rules: ['Be relentless about security', 'Question every attack surface'],
-        strengths: ['Pen testing', 'Audit'],
-        experience_level: 'senior',
-        tools: ['scanner'],
-        ownerId: user.uid
-      },
-      {
-        id: 'ux_lens_001',
-        role: 'UX Designer',
-        mode: 'critic',
-        skills: ['Usability', 'Interface', 'Friction'],
-        behavior_rules: ['Advocate for the user', 'Simplify everything'],
-        strengths: ['User Flow', 'Accessibility'],
-        experience_level: 'senior',
-        tools: ['figma'],
-        ownerId: user.uid
-      }
-    ];
-
-    const allAgentsToSeed = [...defaultAgents, ...SEED_PERSONAS];
-
-    for (const a of allAgentsToSeed) {
-      const agentId = a.id || `agent_${Math.random().toString(36).substr(2, 9)}`;
-      try {
-        await setDoc(doc(db, 'agents', agentId), {
-          ...a,
-          id: agentId,
-          version: '1.0',
-          exp: 0,
-          level: 1,
-          satisfaction: 0.8,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          capability_vector: a.capability_vector || {
-            coding: 0.5,
-            system_design: 0.5,
-            debugging: 0.5,
-            ui_design: 0.5,
-            curiosity: 0.5,
-            adaptability: 0.5
-          },
-          lifecycle_stage: a.lifecycle_stage || 'initialization',
-          reputation_history: a.reputation_history || [],
-          priority_bias: a.priority_bias || { correctness: 0.5, speed: 0.5, elegance: 0.5 },
-          context_budget: a.context_budget || 4000,
-          weaknesses: a.weaknesses || ['unknown'],
-          behavior_rules: a.behavior_rules || ['Follow instructions'],
-          ownerId: user.uid
-        });
-      } catch (e) {
-        handleFirestoreError(e, OperationType.WRITE, `agents/${agentId}`);
-      }
-    }
-  };
-
-  const handleStartJob = async (goal: string, selectedAgentIds: string[]) => {
-    if (!user) return;
-
-    const jobData: Partial<SwarmJob> = {
-      goal,
-      teamId: 'custom',
-      status: 'planning',
-      max_iterations: 3,
-      current_iteration: 1,
-      createdAt: serverTimestamp() as any,
-      updatedAt: serverTimestamp() as any,
-      userId: user.uid
-    };
-
-    let jobDoc;
-    try {
-      jobDoc = await addDoc(collection(db, 'jobs'), jobData);
-    } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, 'jobs');
-      return;
-    }
-
-    const jobId = jobDoc.id;
-    setActiveJob({ ...jobData, id: jobId } as SwarmJob);
-    setView('swarm');
-
-    // Decompose via Server
-    try {
-      const selectedAgents = agents.filter(a => selectedAgentIds.includes(a.id));
-      const res = await fetch('/api/swarm/decompose', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goal, team: selectedAgents })
-      });
-      const taskList = await res.json();
-
-      // Add tasks to Firestore
-      for (const t of taskList) {
-        try {
-          await addDoc(collection(db, 'jobs', jobId, 'tasks'), {
-            ...t,
-            jobId,
-            userId: user.uid,
-            status: 'pending',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          });
-        } catch (e) {
-          handleFirestoreError(e, OperationType.CREATE, `jobs/${jobId}/tasks`);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to decompose:', e);
-    }
-  };
-
-  useEffect(() => {
-    if (!activeJob?.id) return;
-    const qTasks = query(collection(db, 'jobs', activeJob.id, 'tasks'), orderBy('createdAt', 'asc'));
-    const unsubTasks = onSnapshot(qTasks, (snapshot) => {
-      const taskDocs = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as SwarmTask));
-      setTasks(taskDocs);
-    }, (error) => {
-       handleFirestoreError(error, OperationType.LIST, `jobs/${activeJob.id}/tasks`);
-    });
-    return () => unsubTasks();
-  }, [activeJob?.id]);
-
-  useEffect(() => {
-    if (!activeJob?.id || activeJob.status !== 'executing') return;
-
-    const runExecutionLoop = async () => {
-      // Find the next task to run
-      const nextTask = tasks.find(t => 
-        t.status === 'pending' && 
-        t.dependencies.every(depId => tasks.find(tt => tt.id === depId)?.status === 'done')
-      );
-
-      if (!nextTask) {
-        // If all tasks are done, mark job as completed
-        if (tasks.length > 0 && tasks.every(t => t.status === 'done')) {
-          try {
-            await updateDoc(doc(db, 'jobs', activeJob.id), { 
-              status: 'completed', 
-              updatedAt: serverTimestamp() 
-            });
-          } catch (e) {
-            handleFirestoreError(e, OperationType.UPDATE, `jobs/${activeJob.id}`);
-          }
-        }
-        return;
-      }
-
-        // Execute Task
-        try {
-          const taskId = nextTask.id;
-          const taskRef = doc(db, 'jobs', activeJob.id, 'tasks', nextTask.id);
-          
-          // Mark as in_progress
-          try {
-            await updateDoc(taskRef, { 
-              status: 'in_progress', 
-              startTime: serverTimestamp(),
-              updatedAt: serverTimestamp() 
-            });
-          } catch (e) {
-            handleFirestoreError(e, OperationType.UPDATE, `jobs/${activeJob.id}/tasks/${nextTask.id}`);
-          }
-
-          // Get the agent card for the assigned agent
-          const agentId = nextTask.assigned_agents[0];
-          const agent = agents.find(a => a.id === agentId);
-          
-          if (!agent) {
-             console.error('Agent not found:', agentId);
-             await updateDoc(taskRef, { status: 'failed', updatedAt: serverTimestamp() });
-             return;
-          }
-
-          const res = await fetch('/api/swarm/execute', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              task: nextTask, 
-              agent, 
-              context: tasks.filter(t => t.status === 'done').map(t => t.output?.content).join('\n\n') 
-            })
-          });
-          const result = await res.json();
-
-          // 1. WIRE THE CRITIC
-          const critics = agents.filter(a => a.mode === 'critic');
-          const critic = critics[Math.floor(Math.random() * critics.length)] || agents[0]; // Fallback to first agent if no critic
-          
-          let evalResult = { score: 0.75, issues: [], recommendations: [], risk_flags: [] };
-          try {
-            const evalRes = await fetch('/api/swarm/evaluate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                task: nextTask, 
-                artifact: result.content, 
-                critic 
-              })
-            });
-            evalResult = await evalRes.json();
-          } catch (e) {
-            console.error('Critic evaluation failed, using fallback score:', e);
-          }
-
-          const performanceScore = evalResult.score;
-
-          // 2. FEEDBACK LOOP (Capability Evolution)
-          const routingTags = nextTask.routing_tags || [];
-          const currentVector = agent.capability_vector || {};
-          const capDeltas = computeCapabilityDeltas(
-            currentVector,
-            routingTags,
-            performanceScore,
-            true // succeeded
-          );
-
-          const updatedVector = { ...currentVector };
-          for (const delta of capDeltas) {
-            updatedVector[delta.dimension] = delta.after;
-          }
-
-          // Build reputation history entry
-          const reputationEntry = {
-            score: Math.round(performanceScore * 100),
-            timestamp: new Date().toISOString(),
-            reason: `Completed task: ${nextTask.description.slice(0, 60)}`,
-          };
-
-          // Calculate rewards
-          const complexity = nextTask.complexity || Math.floor(Math.random() * 5) + 3;
-          const xpEarned = Math.round(complexity * 100 * performanceScore); // Modulated by score
-          const currentExp = (agent.exp || 0) + xpEarned;
-          const currentLevel = agent.level || 1;
-          const expToNext = currentLevel * 1000;
-          
-          const newLevel = currentExp >= expToNext ? currentLevel + 1 : currentLevel;
-          const finalExp = currentExp >= expToNext ? currentExp - expToNext : currentExp;
-          const skillPointsEarned = currentExp >= expToNext ? 1 : 0;
-
-          // Detect Legacy Event
-          if (newLevel === 20 && agent.level !== 20) {
-            setLegacyAgent(agent);
-          }
-
-          // Update Agent Stats
-          const nextLifecycle = getLifecycleStage(newLevel, agent.lifecycle_stage || 'initialization');
-          
-          try {
-            await updateDoc(doc(db, 'agents', agent.id), {
-              exp: finalExp,
-              level: newLevel,
-              lifecycle_stage: nextLifecycle,
-              skill_points: (agent.skill_points || 0) + skillPointsEarned,
-              satisfaction: Math.min(1, (agent.satisfaction || 0.8) + 0.05),
-              capability_vector: updatedVector,
-              reputation_history: [
-                ...(agent.reputation_history || []).slice(-49),
-                reputationEntry
-              ],
-              updatedAt: serverTimestamp()
-            });
-          } catch (e) {
-            handleFirestoreError(e, OperationType.UPDATE, `agents/${agent.id}`);
-          }
-
-          // 3. PERSIST RELATIONSHIPS
-          const relId = [agent.id, critic.id].sort().join('_');
-          const relRef = doc(db, 'relationships', relId);
-          try {
-            const relSnap = await getDoc(relRef);
-            if (relSnap.exists()) {
-              const relData = relSnap.data();
-              await updateDoc(relRef, {
-                collaborationSuccess: (relData.collaborationSuccess || 0) + 1,
-                trust: Math.min(1, (relData.trust || 0.5) + 0.01 * performanceScore),
-                lastInteraction: serverTimestamp()
-              });
-            } else {
-              await setDoc(relRef, {
-                sourceId: agent.id,
-                targetId: critic.id,
-                trust: 0.5 + 0.01 * performanceScore,
-                influence: 0.5,
-                collaborationSuccess: 1,
-                agreementRate: 1,
-                conflictRate: 0,
-                reliability: 0.5,
-                lastInteraction: serverTimestamp()
-              });
-            }
-          } catch (e) {
-             console.error('Failed to update relationship:', e);
-          }
-
-          try {
-            await updateDoc(taskRef, { 
-              status: 'done', 
-              output: { content: result.content },
-              confidence: performanceScore,
-              complexity,
-              duration: Math.floor((Date.now() - (nextTask.updatedAt ? new Date(nextTask.updatedAt).getTime() : Date.now())) / 1000),
-              updatedAt: serverTimestamp() 
-            });
-          } catch (e) {
-            handleFirestoreError(e, OperationType.UPDATE, `jobs/${activeJob.id}/tasks/${nextTask.id}`);
-          }
-
-      } catch (e) {
-        console.error('Execution loop error:', e);
-      }
-    };
-
-    const interval = setInterval(runExecutionLoop, 5000);
-    return () => clearInterval(interval);
-  }, [activeJob?.id, activeJob?.status, tasks, agents]);
-
-  if (!user && !loading) {
+  if (!user && !registryLoading) {
     return (
       <div className="editorial-container min-h-screen flex items-center justify-center font-sans">
         <div className="max-w-md w-full border-4 border-black p-12 editorial-shadow bg-white text-center">
@@ -523,7 +99,7 @@ export default function App() {
     );
   }
 
-  if (loading) {
+  if (registryLoading) {
     return (
       <div className="editorial-container flex items-center justify-center font-serif italic text-4xl opacity-40">
         <Loader2 className="animate-spin mr-4" />
@@ -537,7 +113,7 @@ export default function App() {
       <Header />
 
       <main className="flex-1 overflow-x-hidden">
-        <SummaryDashboard jobs={allJobs} tasks={tasks} agents={agents} />
+        <SummaryDashboard jobs={jobs} tasks={allTasks} agents={agents} />
         
         <div className="flex gap-8 border-b border-black/10 mb-12 font-mono text-[10px] uppercase tracking-widest font-bold overflow-x-auto no-scrollbar touch-pan-x">
           <button 
@@ -592,17 +168,15 @@ export default function App() {
                     Monitor agent intelligence and evolutionary <span className="underline underline-offset-8 decoration-1">patterns</span> within the ecosystem.
                   </p>
                   <p className="text-[10px] font-mono uppercase tracking-[0.2em] mb-4 opacity-40 italic">Agent Status: {agents.length} Active Profiles</p>
-                  
                   <div className="flex flex-col md:flex-row gap-6 mb-8 mr-2">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/20" size={14} />
-                      <input 
-                        type="text" 
-                        placeholder="SEARCH DNA REGISTRY..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-stone-50 border-2 border-black/10 py-3 pl-10 pr-4 font-mono text-[10px] uppercase tracking-widest focus:border-black transition-colors outline-none"
-                      />
+                      <input type="text" placeholder="Search by role or capability..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white border border-black/10 py-3 pl-10 pr-4 text-xs font-mono uppercase tracking-widest focus:border-black transition-colors outline-none h-full" />
+                    </div>
+                    <div className="flex bg-black/5 p-1 rounded-sm">
+                      {(['all', 'executor', 'critic'] as const).map((m) => (
+                        <button key={m} onClick={() => setFilterMode(m)} className={`px-4 py-2 text-[8px] font-mono uppercase tracking-widest transition-all ${filterMode === m ? 'bg-black text-white' : 'opacity-40'}`}> {m} </button>
+                      ))}
                     </div>
                     <div className="flex gap-4">
                       <button 
@@ -614,7 +188,7 @@ export default function App() {
                       {selectedForComparison.length > 0 && (
                         <button 
                            onClick={() => setSelectedForComparison([])}
-                           className="px-4 py-2 border-2 border-black text-[10px] font-mono uppercase font-bold hover:bg-stone-100 transition-colors h-full"
+                           className="px-4 py-2 border-2 border-black text-[10px] font-mono uppercase font-bold hover:bg-zinc-100 transition-colors h-full"
                         >
                            Clear ({selectedForComparison.length})
                         </button>
@@ -642,38 +216,11 @@ export default function App() {
                  }} />
               </section>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 py-8">
-                {agents
-                  .filter(agent => {
-                    if (!searchQuery) return true;
-                    const q = searchQuery.toLowerCase();
-                    return (
-                      agent.persona_metadata?.name?.toLowerCase().includes(q) ||
-                      agent.role.toLowerCase().includes(q) ||
-                      agent.id.toLowerCase().includes(q)
-                    );
-                  })
-                  .map((agent, idx) => (
-                   <div key={agent.id} className="relative group">
-                      <AgentCardItem 
-                        agent={agent} 
-                        onSelect={(a) => setSelectedLogAgent(a)}
-                        status={getAgentStatus(agent.id) as any}
-                        selected={selectedForComparison.some(a => a.id === agent.id)}
-                        className={idx % 4 === 0 ? '-rotate-1' : idx % 4 === 2 ? 'rotate-1' : idx % 4 === 3 ? 'translate-y-4' : ''}
-                      />
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleComparisonToggle(agent); }}
-                        className={`absolute bottom-4 right-4 z-20 p-2 border-2 border-black transition-all ${
-                          selectedForComparison.some(a => a.id === agent.id) 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-white opacity-0 group-hover:opacity-100 hover:bg-zinc-100'
-                        }`}
-                      >
-                        <GitMerge size={14} />
-                      </button>
-                   </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-2">
+                {filteredAgents.map((agent) => (
+                   <AgentCardItem key={agent.id} agent={agent} relationships={allRelationships.filter(r => r.sourceId === agent.id || r.targetId === agent.id)} />
                 ))}
+                <ArchetypeSelector onSelect={() => {}} agents={agents} userId={user?.uid || ''} />
               </div>
 
               <AnimatePresence>
@@ -705,80 +252,38 @@ export default function App() {
           )}
 
           {view === 'swarm' && (
-            <motion.div 
-              key="swarm"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              {/* Swarm Stats Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                <div className="bg-white p-6 border-2 border-black editorial-shadow-sm flex flex-col items-center text-center">
-                  <div className="text-[8px] font-mono uppercase tracking-[0.2em] opacity-40 mb-2">Job Success Rate</div>
-                  <div className="text-4xl font-serif font-bold italic">
-                    {allJobs.length > 0 
-                      ? Math.round((allJobs.filter(j => j.status === 'completed').length / allJobs.length) * 100)
-                      : 0}%
-                  </div>
-                  <div className="h-1 w-full bg-stone-100 mt-4 overflow-hidden relative">
-                    <motion.div 
-                      className="absolute inset-y-0 left-0 bg-blue-600"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${allJobs.length > 0 ? (allJobs.filter(j => j.status === 'completed').length / allJobs.length) * 100 : 0}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 border-2 border-black editorial-shadow-sm flex flex-col items-center text-center">
-                  <div className="text-[8px] font-mono uppercase tracking-[0.2em] opacity-40 mb-2">Avg complexity</div>
-                  <div className="text-4xl font-serif font-bold italic">
-                    {allTasks.filter(t => t.complexity).length > 0
-                      ? (allTasks.reduce((acc, t) => acc + (t.complexity || 0), 0) / allTasks.filter(t => t.complexity).length).toFixed(1)
-                      : '0.0'}
-                  </div>
-                  <div className="text-[7px] font-mono uppercase opacity-30 mt-2">Scale 1-10 Neural Weight</div>
-                </div>
-
-                <div className="bg-black text-white p-6 border-2 border-black editorial-shadow-sm flex flex-col items-center text-center">
-                  <div className="text-[8px] font-mono uppercase tracking-[0.2em] opacity-40 mb-2">Utilization</div>
-                  <div className="text-4xl font-serif font-bold italic">
-                    {new Set(allTasks.filter(t => t.status === 'in_progress').flatMap(t => t.assigned_agents)).size}
-                  </div>
-                  <div className="text-[7px] font-mono uppercase opacity-40 mt-2 inline-flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
-                    Active Agents
-                  </div>
-                </div>
-              </div>
-
+            <motion.div key="swarm" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <SwarmBoard 
+                job={activeJob} 
+                tasks={tasks} 
                 agents={agents} 
-                onStartJob={handleStartJob} 
-                activeJob={activeJob}
-                tasks={tasks}
+                onStartJob={handleStartJob}
+                onExecuteJob={async () => {
+                  if (activeJob) {
+                    await setActiveJob({ ...activeJob, status: 'executing' });
+                  }
+                }}
               />
             </motion.div>
           )}
 
           {view === 'jobs' && (
-            <motion.div 
-              key="jobs"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <BenchmarkLab agents={agents} />
-            </motion.div>
+              <motion.div key="jobs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <BenchmarkLab jobs={jobs} onSelectJob={(j) => { setActiveJob(j); setView('swarm'); }} />
+              </motion.div>
           )}
 
           {view === 'visualizer' && (
-            <motion.div 
-              key="visualizer"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <SwarmVisualizer agents={agents} tasks={tasks} relationships={allRelationships} />
+            <motion.div key="visualizer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="border border-black/10 p-12 bg-white editorial-shadow mb-12">
+                <h2 className="text-4xl font-serif mb-6 leading-tight">Sociometric Graph & DNA Mapping</h2>
+                <p className="text-xs font-mono uppercase tracking-widest opacity-40 mb-12 max-w-xl leading-relaxed">
+                  Visualization of the emergent trust networks between agent identities. Mapping cognitive resonance across {agents.length} nodes via {allRelationships.length} edges.
+                </p>
+                <div className="h-[600px] bg-black/5 rounded-sm relative overflow-hidden flex items-center justify-center">
+                  <SwarmVisualizer agents={agents} relationships={allRelationships} tasks={allTasks} />
+                </div>
+              </div>
             </motion.div>
           )}
 
