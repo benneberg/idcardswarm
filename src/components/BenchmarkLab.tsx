@@ -6,9 +6,11 @@ import { Zap, Users, Target, FlaskConical } from 'lucide-react';
 
 interface Props {
   agents: AgentCard[];
+  jobs?: any[];
+  onSelectJob?: (job: any) => void;
 }
 
-export const BenchmarkLab: React.FC<Props> = ({ agents }) => {
+export const BenchmarkLab: React.FC<Props> = ({ agents = [], jobs = [], onSelectJob }) => {
   return (
     <div className="space-y-12">
       <div className="flex justify-between items-end border-b-4 border-black pb-8">

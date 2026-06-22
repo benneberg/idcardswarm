@@ -8,9 +8,9 @@ interface Props {
   agents: any[];
 }
 
-export const SocialFeed: React.FC<Props> = ({ relationships, agents }) => {
+export const SocialFeed: React.FC<Props> = ({ relationships = [], agents = [] }) => {
   const sortedRels = [...relationships]
-    .filter(r => r.lastInteraction)
+    .filter(r => r?.lastInteraction)
     .sort((a, b) => new Date(b.lastInteraction?.seconds * 1000 || b.lastInteraction).getTime() - new Date(a.lastInteraction?.seconds * 1000 || a.lastInteraction).getTime())
     .slice(0, 5);
 

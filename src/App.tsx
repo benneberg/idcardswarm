@@ -254,7 +254,7 @@ export default function App() {
           {view === 'swarm' && (
             <motion.div key="swarm" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <SwarmBoard 
-                job={activeJob} 
+                activeJob={activeJob} 
                 tasks={tasks} 
                 agents={agents} 
                 relationships={allRelationships}
@@ -270,7 +270,11 @@ export default function App() {
 
           {view === 'jobs' && (
               <motion.div key="jobs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <BenchmarkLab jobs={jobs} onSelectJob={(j) => { setActiveJob(j); setView('swarm'); }} />
+                <BenchmarkLab 
+                  agents={agents}
+                  jobs={jobs} 
+                  onSelectJob={(j: any) => { setActiveJob(j); setView('swarm'); }} 
+                />
               </motion.div>
           )}
 

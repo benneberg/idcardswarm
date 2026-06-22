@@ -14,7 +14,7 @@ interface Props {
 
 type ViewMode = 'graph' | 'cluster' | 'heatmap';
 
-export const SwarmVisualizer: React.FC<Props> = ({ agents, tasks, relationships = [] }) => {
+export const SwarmVisualizer: React.FC<Props> = ({ agents = [], tasks = [], relationships = [] }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('graph');
   const [timeStep, setTimeStep] = React.useState(100);

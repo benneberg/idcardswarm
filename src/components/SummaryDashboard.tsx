@@ -9,7 +9,7 @@ interface Props {
   agents: AgentCard[];
 }
 
-export const SummaryDashboard: React.FC<Props> = ({ jobs, tasks, agents }) => {
+export const SummaryDashboard: React.FC<Props> = ({ jobs = [], tasks = [], agents = [] }) => {
   const activeJobs = jobs.filter(j => j.status !== 'completed' && j.status !== 'failed').length;
   
   const avgTrust = agents.length > 0 

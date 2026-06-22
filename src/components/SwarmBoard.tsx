@@ -12,7 +12,7 @@ interface Props {
   relationships?: any[];
 }
 
-export const SwarmBoard: React.FC<Props> = ({ agents, onStartJob, activeJob, tasks, relationships = [] }) => {
+export const SwarmBoard: React.FC<Props> = ({ agents = [], onStartJob, activeJob, tasks = [], relationships = [] }) => {
   const [goal, setGoal] = useState('');
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
 
