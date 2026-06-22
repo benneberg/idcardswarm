@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { computeCapabilityDeltas } from '../lib/capabilityEngine';
+import { simulateBond, exchangeKnowledge, applyInfluence } from '../lib/socialDynamics';
 import type { SwarmJob, SwarmTask, EntityRelationship, AgentCard } from '../types';
 
 export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStage: (level: number, stage: string) => string, setLegacyAgent: (agent: AgentCard) => void) {
@@ -37,6 +38,63 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     });
     return () => unsubJobs();
   }, [user]);
+
+  // Social Interaction Loop
+  const runSocialLoop = useCallback(async () => {
+    if (!user || agents.length < 2) return;
+    
+    // Pick two random agents to interact
+    const idx1 = Math.floor(Math.random() * agents.length);
+    let idx2 = Math.floor(Math.random() * agents.length);
+    while (idx1 === idx2) idx2 = Math.floor(Math.random() * agents.length);
+    
+    const a1 = agents[idx1];
+    const a2 = agents[idx2];
+    
+    const bond = simulateBond(a1, a2);
+    if (bond) {
+       const relId = [a1.id, a2.id].sort().join('_');
+       const relRef = doc(db, 'relationships', relId);
+       
+       await updateDoc(relRef, {
+         trust: bond.strength,
+         type: bond.type,
+         lastInteraction: serverTimestamp()
+       }).catch(() => {
+         // Create if doesn't exist
+         addDoc(collection(db, 'relationships'), {
+           ...bond,
+           sourceId: a1.id,
+           targetId: a2.id,
+           userId: user.uid,
+           createdAt: serverTimestamp()
+         });
+       });
+    }
+
+    // Knowledge Exchange
+    const knowledge = exchangeKnowledge(a1, a2);
+    if (knowledge?.targetUpdate) {
+       await updateDoc(doc(db, 'agents', a2.id), {
+         skills: [...(a2.skills || []), knowledge.targetUpdate].slice(-10),
+         updatedAt: serverTimestamp()
+       });
+    }
+
+    // Influence
+    const influence = applyInfluence(a1, a2);
+    if (influence && a2.persona_metadata) {
+       await updateDoc(doc(db, 'agents', a2.id), {
+         'persona_metadata.tech_proficiency': Math.max(0, Math.min(100, a2.persona_metadata.tech_proficiency + influence.tech_nudge)),
+         updatedAt: serverTimestamp()
+       });
+    }
+  }, [user, agents]);
+
+  useEffect(() => {
+    const interval = setInterval(runSocialLoop, 30000); // Pulse every 30s
+    return () => clearInterval(interval);
+  }, [runSocialLoop]);
 
   // Listen to Relationships
   useEffect(() => {

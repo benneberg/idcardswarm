@@ -162,5 +162,110 @@ export const SEED_PERSONAS: Partial<AgentCard>[] = [
       research_ability: 0.95, 
       reliability: 0.98 
     }
+  },
+  {
+    id: 'lila-thorne',
+    role: 'Digital Minimalist Curator',
+    mode: 'simulator',
+    skills: ['Curation', 'Mindfulness', 'Analog Photography'],
+    experience_level: 'mid',
+    reputation: 88,
+    trustScore: 94,
+    persona_metadata: {
+      name: 'Lila Thorne',
+      age: 24,
+      occupation: 'Content Curator',
+      bio: 'Lila advocates for intentional tech use. She uses social networks to share "quiet" content and high-quality photography.',
+      motivations: ['Authenticity', 'Quality over Quantity', 'Peace of Mind'],
+      pain_points: ['Infinite Scroll', 'Algorithmic Noise', 'Notification Fatigue'],
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lila',
+      personality: { openness: 85, conscientiousness: 70, risk_tolerance: 30, extraversion: 40, agreeableness: 80 },
+      tech_proficiency: 75
+    },
+    capability_vector: { creativity: 0.9, strategic_thinking: 0.6, technical_depth: 0.5, communication: 0.8, leadership: 0.4, risk_tolerance: 0.2, research_ability: 0.7, reliability: 0.8 }
+  },
+  {
+    id: 'samir-kulkarni',
+    role: 'Growth Hacker',
+    mode: 'simulator',
+    skills: ['Virality', 'Data Analytics', 'Community Architecture'],
+    experience_level: 'senior',
+    reputation: 82,
+    trustScore: 78,
+    persona_metadata: {
+      name: 'Samir Kulkarni',
+      age: 31,
+      occupation: 'Growth Lead',
+      bio: 'Samir sees social networks as ecosystems to be optimized. He builds high-engagement communities for niche brands.',
+      motivations: ['Scaling', 'Influence', 'Data-driven Results'],
+      pain_points: ['Churn', 'Platform Censorship', 'Static Content'],
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Samir',
+      personality: { openness: 70, conscientiousness: 90, risk_tolerance: 80, extraversion: 85, agreeableness: 55 },
+      tech_proficiency: 92
+    },
+    capability_vector: { creativity: 0.7, strategic_thinking: 0.95, technical_depth: 0.8, communication: 0.9, leadership: 0.85, risk_tolerance: 0.9, research_ability: 0.8, reliability: 0.75 }
+  },
+  {
+    id: 'yuki-tanaka',
+    role: 'Pro Gamer & Streamer',
+    mode: 'simulator',
+    skills: ['Esports', 'Live Performance', 'Hardware Optimization'],
+    experience_level: 'mid',
+    reputation: 91,
+    trustScore: 82,
+    persona_metadata: {
+      name: 'Yuki Tanaka',
+      age: 28,
+      occupation: 'Indie Streamer',
+      bio: 'Yuki lives at the intersection of gaming and social media. She values high-performance tech and raw, real-time connection with her chat.',
+      motivations: ['Recognition', 'Technical Mastery', 'Fan Interaction'],
+      pain_points: ['Lag', 'Toxic Communities', 'Plagiarism'],
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Yuki',
+      personality: { openness: 92, conscientiousness: 75, risk_tolerance: 60, extraversion: 90, agreeableness: 65 },
+      tech_proficiency: 98
+    },
+    capability_vector: { creativity: 0.8, strategic_thinking: 0.85, technical_depth: 0.98, communication: 0.95, leadership: 0.6, risk_tolerance: 0.7, research_ability: 0.6, reliability: 0.85 }
+  },
+  {
+    id: 'robert-vance',
+    role: 'SMB Mentor',
+    mode: 'simulator',
+    skills: ['Business Coaching', 'Network Expansion', 'Crisis Management'],
+    experience_level: 'staff',
+    reputation: 96,
+    trustScore: 90,
+    persona_metadata: {
+      name: 'Robert Vance',
+      age: 45,
+      occupation: 'Consultant',
+      bio: 'Robert uses social networking for high-level B2B legacy building. He values professional dignity and long-form thought leadership.',
+      motivations: ['Legacy', 'Teaching', 'Stabilizing Markets'],
+      pain_points: ['Shallow Content', 'Imposter Syndrome', 'Lack of Professionalism'],
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Robert',
+      personality: { openness: 65, conscientiousness: 98, risk_tolerance: 40, extraversion: 70, agreeableness: 75 },
+      tech_proficiency: 65
+    },
+    capability_vector: { creativity: 0.5, strategic_thinking: 0.95, technical_depth: 0.6, communication: 0.9, leadership: 0.98, risk_tolerance: 0.4, research_ability: 0.85, reliability: 0.95 }
+  },
+  {
+    id: 'zara-joy',
+    role: 'Gen-Z Trend Analyst',
+    mode: 'simulator',
+    skills: ['Trend Forecasting', 'Short-form Video', 'Meme Culture'],
+    experience_level: 'junior',
+    reputation: 75,
+    trustScore: 85,
+    persona_metadata: {
+      name: 'Zara Joy',
+      age: 19,
+      occupation: 'Content Creator',
+      bio: 'Zara understands the "vibe shift" before it happens. She natively navigates multiple apps to synthesize cultural movements.',
+      motivations: ['Relevance', 'Impact', 'Novelty'],
+      pain_points: ['Mainstream Co-option', 'Burnout', 'Clunky UIs'],
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zara',
+      personality: { openness: 98, conscientiousness: 50, risk_tolerance: 90, extraversion: 80, agreeableness: 85 },
+      tech_proficiency: 88
+    },
+    capability_vector: { creativity: 0.98, strategic_thinking: 0.4, technical_depth: 0.7, communication: 0.9, leadership: 0.4, risk_tolerance: 0.95, research_ability: 0.8, reliability: 0.5 }
   }
 ];

@@ -257,6 +257,7 @@ export default function App() {
                 job={activeJob} 
                 tasks={tasks} 
                 agents={agents} 
+                relationships={allRelationships}
                 onStartJob={handleStartJob}
                 onExecuteJob={async () => {
                   if (activeJob) {

@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { AgentCard, SwarmJob, SwarmTask } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Plus, Search, Activity, ChevronRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Play, Plus, Search, Activity, ChevronRight, CheckCircle2, AlertCircle, Loader2, Users } from 'lucide-react';
+import { SocialFeed } from './SocialFeed';
 
 interface Props {
   agents: AgentCard[];
   onStartJob: (goal: string, selectedAgentIds: string[]) => void;
   activeJob?: SwarmJob;
   tasks: SwarmTask[];
+  relationships?: any[];
 }
 
-export const SwarmBoard: React.FC<Props> = ({ agents, onStartJob, activeJob, tasks }) => {
+export const SwarmBoard: React.FC<Props> = ({ agents, onStartJob, activeJob, tasks, relationships = [] }) => {
   const [goal, setGoal] = useState('');
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
 
@@ -87,6 +89,10 @@ export const SwarmBoard: React.FC<Props> = ({ agents, onStartJob, activeJob, tas
         >
           {activeJob ? 'Swarm Active...' : 'Launch Simulation'}
         </button>
+
+        <div className="pt-8">
+           <SocialFeed relationships={relationships} agents={agents} />
+        </div>
       </div>
 
       {/* Right: Active Swarm Timeline */}
