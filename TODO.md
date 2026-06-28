@@ -27,3 +27,8 @@ Extend the AgentLog component to include a visual 'Evolution History' branch, di
 Implement a user authentication system for the idCard Personas Swarm application. Users should be able to sign up with an email and password, log in, and log out. Include password reset functionality.
 
 Develop tools for users to create and customize personas within the idCard Personas Swarm application. Include options for defining name, age, occupation, personality traits, and a profile picture.
+Add a persistent 'Quick Task' floating action button that opens a simple modal to instantly create a new task entry in the SwarmBoard registry. Design an interface for editing swarm behaviors in the idCard Personas Swarm application. Users should be able to set parameters for agent interaction, such as attraction, repulsion, alignment, and goal-seeking. Allow for saving and loading different swarm behavior profiles.
+
+Build visualization tools for the idCard Personas Swarm application. Implement a real-time graphical display of the swarm's movement and interactions. Include features to select and track individual personas, highlight areas of interest, and generate basic statistical reports on the swarm's overall behavior.
+
+Create a persona creator for the idCard Personas Swarm application. Users should be able to define attributes such as name, age, occupation, personality traits (e.g., brave, cautious, curious), and a brief backstory. The system should store these personas for later use in the swarm simulation.
