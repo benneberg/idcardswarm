@@ -20,3 +20,10 @@
   Evidence: Mentioned in ARCHITECTURE.md but remains a prototype stub.  
   Recommendation: Integrate D3 force-directed graph with real relationship data.  
   Confidence: High
+
+## Notes:
+Extend the AgentLog component to include a visual 'Evolution History' branch, displaying previous versions of the agent when it evolves. Implement a timeline visualization that shows chronological interaction events between selected agents within the swarm. Create an automated task scheduler that suggests task assignments for agents based on their skill sets and historical performance benchmarks. Create a simulation environment for the idCard Personas Swarm application. This simulation should allow multiple user-created personas to interact with each other based on their defined personality traits and roles. Output a log of their interactions.
+
+Implement a user authentication system for the idCard Personas Swarm application. Users should be able to sign up with an email and password, log in, and log out. Include password reset functionality.
+
+Develop tools for users to create and customize personas within the idCard Personas Swarm application. Include options for defining name, age, occupation, personality traits, and a profile picture.
