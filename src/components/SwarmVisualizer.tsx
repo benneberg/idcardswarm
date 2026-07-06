@@ -23,30 +23,37 @@ export const SwarmVisualizer: React.FC<Props> = ({ agents = [], tasks = [], rela
   // Derive connections based on ecosystem dynamics
   const connections = useMemo(() => {
     const links: SwarmConnection[] = [];
+    const agentIds = new Set(agents.map(a => a.id));
     
     // 1. Pheromone Signals (Based on recent successful tasks)
     tasks.filter(t => t.status === 'done').forEach(task => {
       const ids = task.assigned_agents;
       for (let i = 0; i < ids.length; i++) {
         for (let j = i + 1; j < ids.length; j++) {
-          links.push({
-            source: ids[i],
-            target: ids[j],
-            type: 'pheromone',
-            strength: (task.confidence || 0.8) * 1.5
-          });
+          if (agentIds.has(ids[i]) && agentIds.has(ids[j])) {
+            links.push({
+              source: ids[i],
+              target: ids[j],
+              type: 'pheromone',
+              strength: (task.confidence || 0.8) * 1.5
+            });
+          }
         }
       }
     });
 
     // 2. Persistent Trust (From Firestore Relationships)
     relationships.forEach(rel => {
-      links.push({
-        source: rel.sourceId,
-        target: rel.targetId,
-        type: 'trust',
-        strength: rel.trust || 0.5
-      });
+      const sId = rel.sourceId || rel.source;
+      const tId = rel.targetId || rel.target;
+      if (sId && tId && agentIds.has(sId) && agentIds.has(tId)) {
+        links.push({
+          source: sId,
+          target: tId,
+          type: 'trust',
+          strength: rel.trust || rel.strength || 0.5
+        });
+      }
     });
 
     // 3. Spontaneous trust based on personality (for visual flair/discovery)
@@ -86,15 +93,19 @@ export const SwarmVisualizer: React.FC<Props> = ({ agents = [], tasks = [], rela
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const simulation = d3.forceSimulation(agents as any)
+    // Deep clone nodes and links to keep D3 and React state pure
+    const nodes = agents.map(a => ({ ...a }));
+    const links = connections.map(l => ({ ...l }));
+
+    const simulation = d3.forceSimulation(nodes as any)
       .force("charge", d3.forceManyBody().strength(viewMode === 'graph' ? -400 : -100))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collision", d3.forceCollide().radius(50));
 
     if (viewMode === 'graph') {
-      simulation.force("link", d3.forceLink(connections).id((d: any) => d.id).distance(120));
+      simulation.force("link", d3.forceLink(links).id((d: any) => d.id).distance(120));
     } else if (viewMode === 'cluster') {
-      const distinctOccupations: string[] = Array.from(new Set(agents.map(a => a.persona_metadata?.occupation || a.role)));
+      const distinctOccupations: string[] = Array.from(new Set(nodes.map(a => a.persona_metadata?.occupation || a.role)));
       const occupationScale = d3.scalePoint<string>()
         .domain(distinctOccupations)
         .range([100, width - 100]);
@@ -108,7 +119,7 @@ export const SwarmVisualizer: React.FC<Props> = ({ agents = [], tasks = [], rela
     if (viewMode === 'graph') {
       g.append("g")
         .selectAll("line")
-        .data(connections)
+        .data(links)
         .join("line")
         .attr("stroke", (d: any) => d.type === 'pheromone' ? '#FBBF24' : '#60A5FA')
         .attr("stroke-opacity", (d: any) => d.strength * 0.4)
@@ -119,7 +130,7 @@ export const SwarmVisualizer: React.FC<Props> = ({ agents = [], tasks = [], rela
     // Citizen Nodes
     const node = g.append("g")
       .selectAll("g")
-      .data(agents)
+      .data(nodes)
       .join("g")
       .on("mouseover", (event, d: any) => setHoveredAgent(d))
       .on("mouseout", () => setHoveredAgent(null))

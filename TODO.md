@@ -15,7 +15,7 @@
 - [x] **[server.ts]** Implement structured logging (Pino).  
 
 # Phase 4 — Future Enhancements
-- [ ] **[Sociometric Graph]** Complete the interactive trust network visualizer.  
+- [x] **[Sociometric Graph]** Complete the interactive trust network visualizer.  
   Priority: P3 | Impact: High | Effort: L  
   Evidence: Mentioned in ARCHITECTURE.md but remains a prototype stub.  
   Recommendation: Integrate D3 force-directed graph with real relationship data.  

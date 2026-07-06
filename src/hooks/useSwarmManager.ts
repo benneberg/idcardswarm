@@ -11,6 +11,7 @@ import {
   collectionGroup,
   runTransaction,
   updateDoc,
+  setDoc,
   serverTimestamp
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
@@ -56,20 +57,15 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
        const relId = [a1.id, a2.id].sort().join('_');
        const relRef = doc(db, 'relationships', relId);
        
-       await updateDoc(relRef, {
+       await setDoc(relRef, {
+         sourceId: a1.id,
+         targetId: a2.id,
          trust: bond.strength,
          type: bond.type,
-         lastInteraction: serverTimestamp()
-       }).catch(() => {
-         // Create if doesn't exist
-         addDoc(collection(db, 'relationships'), {
-           ...bond,
-           sourceId: a1.id,
-           targetId: a2.id,
-           userId: user.uid,
-           createdAt: serverTimestamp()
-         });
-       });
+         userId: user.uid,
+         lastInteraction: serverTimestamp(),
+         createdAt: serverTimestamp()
+       }, { merge: true });
     }
 
     // Knowledge Exchange
