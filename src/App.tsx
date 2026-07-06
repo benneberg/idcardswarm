@@ -16,6 +16,7 @@ import { ComparisonDashboard } from './components/ComparisonDashboard.tsx';
 import { PersonaComparisonTable } from './components/PersonaComparisonTable.tsx';
 import { AffinityMapper } from './components/AffinityMapper.tsx';
 import { AgentLog } from './components/AgentLog.tsx';
+import { SwarmMethodologyGuide } from './components/SwarmMethodologyGuide.tsx';
 import { USER_PERSONAS, UserPersona } from './data/userPersonas.ts';
 import { spawnOffspring } from './lib/agentService.ts';
 import { 
@@ -27,7 +28,7 @@ import {
 import { auth } from './lib/firebase.ts';
 import type { AgentCard } from './types.ts';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, ClipboardList, Settings, Loader2, Share2, X, Search, Plus, AlertCircle, GitBranch } from 'lucide-react';
+import { Users, ClipboardList, Settings, Loader2, Share2, X, Search, Plus, AlertCircle, GitBranch, BookOpen } from 'lucide-react';
 
 // Modular Hooks
 import { useAgentRegistry } from './hooks/useAgentRegistry';
@@ -35,7 +36,7 @@ import { useSwarmManager } from './hooks/useSwarmManager';
 import { getLifecycleStage } from './lib/utils';
 
 export default function App() {
-  const [view, setView] = useState<'agents' | 'swarm' | 'jobs' | 'visualizer' | 'insights'>('agents');
+  const [view, setView] = useState<'agents' | 'swarm' | 'jobs' | 'visualizer' | 'insights' | 'blueprint'>('agents');
   const [user, setUser] = useState<any>(null);
   const [legacyAgent, setLegacyAgent] = useState<AgentCard | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -150,6 +151,13 @@ export default function App() {
           >
             <Users size={12} />
             User Insights
+          </button>
+          <button 
+            onClick={() => setView('blueprint')}
+            className={`pb-4 border-b-2 transition-all shrink-0 flex items-center gap-2 ${view === 'blueprint' ? 'border-black opacity-100' : 'border-transparent opacity-40'}`}
+          >
+            <BookOpen size={12} />
+            Simulation Specs
           </button>
         </div>
 
@@ -358,6 +366,17 @@ export default function App() {
               <section className="pt-12 border-t border-black/10">
                 <AffinityMapper />
               </section>
+            </motion.div>
+          )}
+
+          {view === 'blueprint' && (
+            <motion.div 
+              key="blueprint"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <SwarmMethodologyGuide />
             </motion.div>
           )}
         </AnimatePresence>

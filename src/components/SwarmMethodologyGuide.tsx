@@ -130,7 +130,7 @@ export const SwarmMethodologyGuide: React.FC = () => {
                   <div className="space-y-2 flex-1">
                     <h3 className="font-serif font-bold text-lg">Stochastic Pairing & Affinity Calculus</h3>
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      When personas cross paths in the simulation loop, interaction probability ($P_{\text{bond}}$) is computed via technical proficiency deltas, shared motivation intersection, and personality matrix distance. High resonance (&gt;65%) cements durable trust bonds in Firestore.
+                      When personas cross paths in the simulation loop, interaction probability (P_bond) is computed via technical proficiency deltas, shared motivation intersection, and personality matrix distance. High resonance (&gt;65%) cements durable trust bonds in Firestore.
                     </p>
                     <div className="p-3 bg-stone-100 font-mono text-[10px] text-stone-700">
                       P_bond = (1 - ΔTech/100)*0.4 + PersonalityMatch*0.4 + SharedMotivations*0.2
