@@ -16,8 +16,8 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { computeCapabilityDeltas } from '../lib/capabilityEngine';
-import { simulateBond, exchangeKnowledge, applyInfluence } from '../lib/socialDynamics';
-import type { SwarmJob, SwarmTask, EntityRelationship, AgentCard } from '../types';
+import { simulateBond, exchangeKnowledge, applyInfluence, applyEnvironmentalModifiers } from '../lib/socialDynamics';
+import type { SwarmJob, SwarmTask, EntityRelationship, AgentCard, SwarmEnvironment } from '../types';
 
 export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStage: (level: number, stage: string) => string, setLegacyAgent: (agent: AgentCard) => void) {
   const [jobs, setJobs] = useState<SwarmJob[]>([]);
@@ -25,6 +25,12 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
   const [tasks, setTasks] = useState<SwarmTask[]>([]);
   const [allTasks, setAllTasks] = useState<SwarmTask[]>([]);
   const [allRelationships, setAllRelationships] = useState<EntityRelationship[]>([]);
+  const [currentEnvironment, setCurrentEnvironment] = useState<SwarmEnvironment>({
+    condition: 'innovation_phase',
+    intensity: 0.5,
+    resources: 0.8,
+    activeObstacles: []
+  });
 
   // Listen to Jobs
   useEffect(() => {
@@ -49,10 +55,11 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     let idx2 = Math.floor(Math.random() * agents.length);
     while (idx1 === idx2) idx2 = Math.floor(Math.random() * agents.length);
     
-    const a1 = agents[idx1];
-    const a2 = agents[idx2];
+    // Apply environmental modifiers to agents before interaction logic
+    const a1 = applyEnvironmentalModifiers(agents[idx1], currentEnvironment);
+    const a2 = applyEnvironmentalModifiers(agents[idx2], currentEnvironment);
     
-    const bond = simulateBond(a1, a2);
+    const bond = simulateBond(a1, a2, currentEnvironment);
     if (bond) {
        const relId = [a1.id, a2.id].sort().join('_');
        const relRef = doc(db, 'relationships', relId);
@@ -69,23 +76,23 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     }
 
     // Knowledge Exchange
-    const knowledge = exchangeKnowledge(a1, a2);
+    const knowledge = exchangeKnowledge(a1, a2, currentEnvironment);
     if (knowledge?.targetUpdate) {
        await updateDoc(doc(db, 'agents', a2.id), {
-         skills: [...(a2.skills || []), knowledge.targetUpdate].slice(-10),
+         skills: [...(agents[idx2].skills || []), knowledge.targetUpdate].slice(-10),
          updatedAt: serverTimestamp()
        });
     }
 
     // Influence
-    const influence = applyInfluence(a1, a2);
-    if (influence && a2.persona_metadata) {
+    const influence = applyInfluence(a1, a2, currentEnvironment);
+    if (influence && agents[idx2].persona_metadata) {
        await updateDoc(doc(db, 'agents', a2.id), {
-         'persona_metadata.tech_proficiency': Math.max(0, Math.min(100, a2.persona_metadata.tech_proficiency + influence.tech_nudge)),
+         'persona_metadata.tech_proficiency': Math.max(0, Math.min(100, agents[idx2].persona_metadata!.tech_proficiency + influence.tech_nudge)),
          updatedAt: serverTimestamp()
        });
     }
-  }, [user, agents]);
+  }, [user, agents, currentEnvironment]);
 
   useEffect(() => {
     const interval = setInterval(runSocialLoop, 30000); // Pulse every 30s
@@ -358,6 +365,8 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     tasks,
     allTasks,
     allRelationships,
-    handleStartJob
+    handleStartJob,
+    currentEnvironment,
+    setCurrentEnvironment
   };
 }

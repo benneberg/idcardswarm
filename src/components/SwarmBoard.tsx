@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { AgentCard, SwarmJob, SwarmTask } from '../types';
+import { AgentCard, SwarmJob, SwarmTask, SwarmEnvironment, SwarmEnvironmentCondition } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Plus, Search, Activity, ChevronRight, CheckCircle2, AlertCircle, Loader2, Users } from 'lucide-react';
+import { Play, Plus, Search, Activity, ChevronRight, CheckCircle2, AlertCircle, Loader2, Users, CloudRain, Sun, Wind, CloudLightning, ShieldAlert } from 'lucide-react';
 import { SocialFeed } from './SocialFeed';
 
 interface Props {
@@ -10,9 +10,19 @@ interface Props {
   activeJob?: SwarmJob;
   tasks: SwarmTask[];
   relationships?: any[];
+  currentEnvironment?: SwarmEnvironment;
+  setCurrentEnvironment?: (env: SwarmEnvironment) => void;
 }
 
-export const SwarmBoard: React.FC<Props> = ({ agents = [], onStartJob, activeJob, tasks = [], relationships = [] }) => {
+export const SwarmBoard: React.FC<Props> = ({ 
+  agents = [], 
+  onStartJob, 
+  activeJob, 
+  tasks = [], 
+  relationships = [],
+  currentEnvironment,
+  setCurrentEnvironment
+}) => {
   const [goal, setGoal] = useState('');
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
 
@@ -25,10 +35,47 @@ export const SwarmBoard: React.FC<Props> = ({ agents = [], onStartJob, activeJob
   const executors = agents.filter(a => a.mode === 'executor');
   const critics = agents.filter(a => a.mode === 'critic');
 
+  const envOptions: { value: SwarmEnvironmentCondition; label: string; icon: React.ReactNode; desc: string }[] = [
+    { value: 'innovation_phase', label: 'Innovation Phase', icon: <Sun size={14} />, desc: 'Creativity up, base interactions up. Unstructured.' },
+    { value: 'crunch_time', label: 'Crunch Time', icon: <CloudLightning size={14} />, desc: 'Deadlines loom. Conscientiousness thrives, adaptability drops.' },
+    { value: 'maintenance_mode', label: 'Maintenance', icon: <Wind size={14} />, desc: 'Focus on stability. Low extraversion agents prefer this.' },
+    { value: 'resource_starved', label: 'Resource Starved', icon: <CloudRain size={14} />, desc: 'Budget/compute low. Technical depth drives adaptability.' },
+    { value: 'high_ambiguity', label: 'High Ambiguity', icon: <ShieldAlert size={14} />, desc: 'Vague requirements. Strategic thinkers thrive.' }
+  ];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
       {/* Left: Configuration */}
       <div className="lg:col-span-4 space-y-8">
+        
+        {currentEnvironment && setCurrentEnvironment && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 border-b border-black pb-2">
+              <Activity size={16} />
+              <h3 className="font-mono text-xs uppercase tracking-widest font-bold">Swarm Environment</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {envOptions.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setCurrentEnvironment({ ...currentEnvironment, condition: opt.value })}
+                  className={`flex items-start gap-3 p-3 editorial-border transition-all text-left ${
+                    currentEnvironment.condition === opt.value ? 'bg-black text-white' : 'bg-white hover:bg-stone-100'
+                  }`}
+                >
+                  <div className="mt-0.5">{opt.icon}</div>
+                  <div>
+                    <div className="font-serif text-sm font-bold uppercase">{opt.label}</div>
+                    <div className={`font-mono text-[9px] uppercase mt-1 ${currentEnvironment.condition === opt.value ? 'opacity-80' : 'opacity-60'}`}>
+                      {opt.desc}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="space-y-4">
           <div className="flex items-center gap-2 border-b border-black pb-2">
             <Plus size={16} />

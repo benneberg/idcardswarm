@@ -70,7 +70,9 @@ export default function App() {
     tasks, 
     allTasks, 
     allRelationships, 
-    handleStartJob 
+    handleStartJob,
+    currentEnvironment,
+    setCurrentEnvironment
   } = useSwarmManager(user, agents, getLifecycleStage, setLegacyAgent);
 
   const filteredAgents = agents
@@ -267,6 +269,8 @@ export default function App() {
                 agents={agents} 
                 relationships={allRelationships}
                 onStartJob={handleStartJob}
+                currentEnvironment={currentEnvironment}
+                setCurrentEnvironment={setCurrentEnvironment}
                 onExecuteJob={async () => {
                   if (activeJob) {
                     await setActiveJob({ ...activeJob, status: 'executing' });

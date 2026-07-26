@@ -102,6 +102,23 @@ export interface EntityRelationship {
 
 export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'failed' | 'iterating';
 
+export type SwarmEnvironmentCondition = 'crunch_time' | 'innovation_phase' | 'maintenance_mode' | 'resource_starved' | 'high_ambiguity';
+
+export interface SwarmEnvironment {
+  condition: SwarmEnvironmentCondition;
+  intensity: number; // 0 to 1
+  resources: number; // 0 to 1 (Compute/Time/Budget)
+  activeObstacles: string[];
+}
+
+export interface SwarmState {
+  environment: SwarmEnvironment;
+  activeTasks: number;
+  completedTasks: number;
+  failedTasks: number;
+}
+
+
 export interface SwarmTask {
   id: string;
   jobId: string;
