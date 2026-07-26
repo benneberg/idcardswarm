@@ -20,3 +20,16 @@
   Evidence: Mentioned in ARCHITECTURE.md but remains a prototype stub.  
   Recommendation: Integrate D3 force-directed graph with real relationship data.  
   Confidence: High
+
+- [x] **[Environmental Factors System]** Implement dynamic environmental context engine.  
+  Features: Crunch Time, Innovation Phase, Maintenance Mode, Resource Starved, High Ambiguity.  
+  Impact: Modifies persona capabilities, interaction probabilities, and influence dynamics.
+
+- [x] **[Swarm Visualization Concept & Manager Insights]** Integrated 3-projection visualizer (force-directed network, cluster map, yield heatmap).  
+  Impact: Provides high-level operational insights into persona alignment, trust topology, and swarm bottlenecks.
+
+- [x] **[Shared Workspace Interaction Model]** Built collaborative interaction simulator between 'Busy Professional' (Maya Vance) & 'Creative Freelancer' (Julian Rivers).  
+  Features: Idea sharing & synthesis stream, async SLA task bridges, environmental context shifts.
+
+- [x] **[Young Adult Mobile Productivity Persona]** Created detailed persona spotlight for Zoe Rivera (Growth PM & Mobile Productivity Enthusiast).  
+  Includes: Demographics, psychographics, goals, frustrations, bio, and mobile app design principles.

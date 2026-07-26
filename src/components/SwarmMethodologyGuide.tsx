@@ -184,9 +184,9 @@ export const SwarmMethodologyGuide: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="text-emerald-400 shrink-0 mt-0.5" size={16} />
                   <div>
-                    <p className="font-bold text-white uppercase">5 Distinct User Personas</p>
+                    <p className="font-bold text-white uppercase">8 Comprehensive User Personas</p>
                     <p className="text-[11px] text-stone-400 pt-1 font-sans">
-                      Generated Alex Chen (Swarm Architect), Sarah Jenkins (Narrative Designer), David Okoro (Operations Director), Elena Rossi (AI Ethicist), and Marcus Thorne (Power User). Full demographics, psychographics, goals, and frustrations mapped in Registry.
+                      Includes Alex Chen, Sarah Jenkins, David Okoro, Elena Rossi, Marcus Thorne, Maya Vance (Busy Professional), Julian Rivers (Creative Freelancer), and Zoe Rivera (Young Adult Mobile App Persona). Complete demographics, psychographics, goals, frustrations, and bio.
                     </p>
                   </div>
                 </div>
@@ -194,9 +194,9 @@ export const SwarmMethodologyGuide: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="text-emerald-400 shrink-0 mt-0.5" size={16} />
                   <div>
-                    <p className="font-bold text-white uppercase">Visualization Methodology</p>
+                    <p className="font-bold text-white uppercase">Visualization & Interaction Models</p>
                     <p className="text-[11px] text-stone-400 pt-1 font-sans">
-                      Designed and integrated Force-directed network graphs, Cluster emergence plots, Radar capability vectors, and Temporal yield heatmaps inside the System Map observatory.
+                      Force-directed network graphs, Cluster maps, Yield heatmaps, and interactive Shared Workspace models (Idea Sharing & SLA Task Bridges between Busy Professionals & Creative Freelancers).
                     </p>
                   </div>
                 </div>
@@ -206,9 +206,9 @@ export const SwarmMethodologyGuide: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="text-emerald-400 shrink-0 mt-0.5" size={16} />
                   <div>
-                    <p className="font-bold text-white uppercase">Swarm ABM Simulation Features</p>
+                    <p className="font-bold text-white uppercase">Environmental Context Engines</p>
                     <p className="text-[11px] text-stone-400 pt-1 font-sans">
-                      Outlined and executed agent-based stochastic pairing rules, pheromone signaling loops, resonance feeds, and autonomous knowledge exchange between interacting personas.
+                      Dynamic environmental modifiers (Crunch Time, Innovation Phase, Resource Starved, High Ambiguity, Maintenance Mode) altering interaction rates, influence thresholds, and persona capabilities.
                     </p>
                   </div>
                 </div>
@@ -218,7 +218,7 @@ export const SwarmMethodologyGuide: React.FC = () => {
                   <div>
                     <p className="font-bold text-white uppercase">Live Database Synchronization</p>
                     <p className="text-[11px] text-stone-400 pt-1 font-sans">
-                      All emergent sociodynamic relationships and knowledge exchange updates persist directly into Firestore cloud persistence in real time.
+                      All emergent sociodynamic relationships, knowledge exchange updates, and swarm jobs persist directly into Firestore cloud persistence in real time.
                     </p>
                   </div>
                 </div>

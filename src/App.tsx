@@ -15,6 +15,7 @@ import { SummaryDashboard } from './components/SummaryDashboard.tsx';
 import { ComparisonDashboard } from './components/ComparisonDashboard.tsx';
 import { PersonaComparisonTable } from './components/PersonaComparisonTable.tsx';
 import { AffinityMapper } from './components/AffinityMapper.tsx';
+import { PersonaWorkspaceInteraction } from './components/PersonaWorkspaceInteraction.tsx';
 import { AgentLog } from './components/AgentLog.tsx';
 import { SwarmMethodologyGuide } from './components/SwarmMethodologyGuide.tsx';
 import { USER_PERSONAS, UserPersona } from './data/userPersonas.ts';
@@ -366,6 +367,10 @@ export default function App() {
                    />
                 </section>
               )}
+
+              <section className="pt-12 border-t border-black/10">
+                <PersonaWorkspaceInteraction />
+              </section>
 
               <section className="pt-12 border-t border-black/10">
                 <AffinityMapper />

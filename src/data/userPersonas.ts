@@ -178,5 +178,107 @@ export const USER_PERSONAS: UserPersona[] = [
     },
     tech_proficiency: 90,
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marcus'
+  },
+  {
+    id: 'user_006',
+    name: 'Maya Vance',
+    age: 32,
+    demographics: 'Executive Product Lead at a Fast-Growth SaaS Corp. MBA, Lives in Chicago.',
+    occupation: 'Busy Professional',
+    bio: 'Maya balances back-to-back cross-functional meetings, team deliverables, and strategic roadmaps. She values structured time-blocking, automated summary highlights, and rapid async decision-making over real-time chatter.',
+    goals: [
+      'Maximize async focus time without missing key decisions',
+      'Automate administrative project handoffs and status updates',
+      'Delegate creative framing to trusted collaborators with clear constraints'
+    ],
+    motivations: [
+      'Efficiency',
+      'Predictable outcomes',
+      'Time sovereignty'
+    ],
+    frustrations: [
+      'Endless unstructured Slack/Teams threads with no clear owner',
+      'Context switching between rigid spreadsheets and fluid whiteboards',
+      'Lack of executive summaries in collaborative workspaces'
+    ],
+    pain_points: [
+      'Calendar fragmentation',
+      'Information overload'
+    ],
+    personality: {
+      openness: 0.5,
+      conscientiousness: 0.95,
+      risk_tolerance: 0.3,
+    },
+    tech_proficiency: 85,
+    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maya'
+  },
+  {
+    id: 'user_007',
+    name: 'Julian Rivers',
+    age: 26,
+    demographics: 'Independent Brand Designer & Content Strategist. Works remotely across Portugal & NYC.',
+    occupation: 'Creative Freelancer',
+    bio: 'Julian runs a multi-disciplinary boutique design studio. He thrives on spontaneous inspiration, visual ideation, and fluid collaborative brainstorming, but struggles with rigid deadlines and dry administrative tracking.',
+    goals: [
+      'Transform loose visual ideas into actionable campaign briefs',
+      'Maintain creative flow while staying aligned with client deadlines',
+      'Seamlessly co-create with structured partners without feeling micro-managed'
+    ],
+    motivations: [
+      'Creative freedom',
+      'Visual aesthetics',
+      'Rapid iteration'
+    ],
+    frustrations: [
+      'Overly rigid corporate project management tools that kill momentum',
+      'Vague client feedback lacking actionable constraints',
+      'Administrative friction when converting brainstorm notes to tasks'
+    ],
+    pain_points: [
+      'Creative block under rigid stress',
+      'Admin overhead'
+    ],
+    personality: {
+      openness: 0.95,
+      conscientiousness: 0.55,
+      risk_tolerance: 0.85,
+    },
+    tech_proficiency: 88,
+    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Julian'
+  },
+  {
+    id: 'user_008',
+    name: 'Zoe Rivera',
+    age: 23,
+    demographics: 'Associate Growth PM & Digital Content Creator. Recent Business & CS Grad in Austin, TX.',
+    occupation: 'Growth PM & Young Adult Productivity Enthusiast',
+    bio: 'Zoe is obsessed with personal optimization, habit stacking, and aesthetic productivity tools. She tests modern mobile apps to balance her corporate PM career with her personal brand build.',
+    goals: [
+      'Build seamless daily focus rituals using gamified time-blocking',
+      'Capture fleeting ideas instantly on mobile with voice & AI auto-categorization',
+      'Sync personal micro-goals with team project deliverables'
+    ],
+    motivations: [
+      'Self-improvement',
+      'Aesthetic minimalism',
+      'Gamified progress tracking'
+    ],
+    frustrations: [
+      'Clunky mobile UIs requiring more than 2 taps to log a task',
+      'Boring black-and-white todo lists without visual delight or streak rewards',
+      'Apps that don\'t sync intelligently between mobile micro-sessions and desktop dashboards'
+    ],
+    pain_points: [
+      'Mobile friction',
+      'Loss of daily momentum'
+    ],
+    personality: {
+      openness: 0.9,
+      conscientiousness: 0.8,
+      risk_tolerance: 0.75,
+    },
+    tech_proficiency: 92,
+    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zoe'
   }
 ];
