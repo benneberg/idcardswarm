@@ -26,7 +26,7 @@ export const calculateInteractionChance = (a: AgentCard, b: AgentCard): number =
     Math.abs(m1.personality.extraversion - m2.personality.extraversion)
   ) / 200;
 
-  return (techScore * 0.4 + personalityMatch * 0.4 + motivationScore) * 1.0;
+  return Math.max(0, Math.min(1.0, (techScore * 0.4 + personalityMatch * 0.4 + motivationScore) * 1.0));
 };
 
 export const simulateBond = (source: AgentCard, target: AgentCard): SwarmConnection | null => {
