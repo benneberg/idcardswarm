@@ -21,8 +21,8 @@ export const spawnOffspring = async (parent: AgentCard) => {
   // Inherit 30% of parent specialization as base stats
   Object.keys(parentDNA).forEach(key => {
     const parentVal = Number(parentDNA[key]) || 0.5;
-    // 30% inheritance + small random mutation
-    offspringDNA[key] = Math.max(0.1, Math.min(1, (parentVal * 0.3) + (Math.random() * 0.1)));
+    // 30% inheritance + small random mutation bounded in [0.05, 0.95]
+    offspringDNA[key] = Math.max(0.05, Math.min(0.95, (parentVal * 0.3) + (Math.random() * 0.1)));
   });
 
   const newId = `citizen-${Math.random().toString(36).substring(2, 9)}`;

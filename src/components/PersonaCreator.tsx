@@ -19,6 +19,10 @@ const STEPS = [
 export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSuccess, setAiSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     age: 25,
@@ -37,6 +41,50 @@ export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
       agreeableness: 50
     }
   });
+
+  const handleGenerateWithAi = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsGenerating(true);
+    setAiError(null);
+    setAiSuccess(false);
+    try {
+      const res = await fetch('/api/swarm/generate-persona', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt.trim() })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to generate persona blueprint');
+      }
+      const data = await res.json();
+      setFormData(prev => ({
+        ...prev,
+        name: data.name || prev.name,
+        age: data.age || prev.age,
+        role: data.role || prev.role,
+        occupation: data.occupation || prev.occupation,
+        bio: data.bio || prev.bio,
+        motivations: data.motivations || prev.motivations,
+        pain_points: data.pain_points || prev.pain_points,
+        experience: data.experience || prev.experience,
+        tech_proficiency: typeof data.tech_proficiency === 'number' ? data.tech_proficiency : prev.tech_proficiency,
+        personality: {
+          openness: data.personality?.openness ?? prev.personality.openness,
+          conscientiousness: data.personality?.conscientiousness ?? prev.personality.conscientiousness,
+          risk_tolerance: data.personality?.risk_tolerance ?? prev.personality.risk_tolerance,
+          extraversion: data.personality?.extraversion ?? prev.personality.extraversion,
+          agreeableness: data.personality?.agreeableness ?? prev.personality.agreeableness,
+        }
+      }));
+      setAiSuccess(true);
+      setTimeout(() => setAiSuccess(false), 4000);
+    } catch (err: any) {
+      setAiError(err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 0));
@@ -180,6 +228,40 @@ export const PersonaCreator: React.FC<Props> = ({ onClose, onSuccess }) => {
                 <div className="space-y-6">
                   {currentStep === 0 && (
                     <div className="grid grid-cols-1 gap-8">
+                      {/* AI Fast Persona Generator */}
+                      <div className="p-4 bg-blue-50 border-2 border-blue-600 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] uppercase font-bold text-blue-900 tracking-wider flex items-center gap-1.5">
+                            <Sparkles size={13} className="text-blue-600" /> AI-Assisted Procedural Generation
+                          </span>
+                          <span className="font-mono text-[9px] text-blue-700 uppercase">Gemini Flash Synthesis</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text"
+                            placeholder="e.g. Senior Security Researcher specializing in memory safety and fault tolerance..."
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleGenerateWithAi(); } }}
+                            className="flex-1 bg-white border border-blue-300 px-3 py-2 text-xs font-mono outline-none focus:border-blue-600"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleGenerateWithAi}
+                            disabled={isGenerating || !aiPrompt.trim()}
+                            className="px-4 py-2 bg-blue-600 text-white font-mono text-[10px] uppercase tracking-widest font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 shrink-0"
+                          >
+                            {isGenerating ? 'Synthesizing...' : 'Generate with AI'}
+                          </button>
+                        </div>
+                        {aiError && (
+                          <p className="text-[10px] font-mono text-red-600">{aiError}</p>
+                        )}
+                        {aiSuccess && (
+                          <p className="text-[10px] font-mono text-green-700 font-bold">✓ Persona parameters successfully generated & mapped!</p>
+                        )}
+                      </div>
+
                       <div className="space-y-2">
                         <label className="text-[10px] font-mono uppercase font-bold tracking-widest">Digital Name</label>
                         <input 

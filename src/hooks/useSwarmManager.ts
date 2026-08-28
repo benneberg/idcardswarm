@@ -92,7 +92,25 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
          updatedAt: serverTimestamp()
        });
     }
-  }, [user, agents, currentEnvironment]);
+
+    // Mathematical Trust Erosion & Temporal Decay Model
+    // Idle relationship bonds decay toward 0.5 baseline over inactive cycles, bounded within [0.10, 0.90]
+    const now = Date.now();
+    for (const rel of allRelationships) {
+      const lastTime = rel.lastInteraction ? new Date(rel.lastInteraction).getTime() : 0;
+      if (now - lastTime > 45000) {
+        const currentTrust = rel.trust ?? 0.5;
+        const decayedTrust = Math.max(0.1, Math.min(0.9, currentTrust + (0.5 - currentTrust) * 0.03));
+        if (Math.abs(decayedTrust - currentTrust) >= 0.005) {
+          const relId = [rel.sourceId, rel.targetId].sort().join('_');
+          await updateDoc(doc(db, 'relationships', relId), {
+            trust: Number(decayedTrust.toFixed(4)),
+            updatedAt: serverTimestamp()
+          }).catch(() => {});
+        }
+      }
+    }
+  }, [user, agents, currentEnvironment, allRelationships]);
 
   useEffect(() => {
     const interval = setInterval(runSocialLoop, 30000); // Pulse every 30s
@@ -184,10 +202,30 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
   const runExecutionLoop = useCallback(async () => {
     if (!activeJob?.id || activeJob.status !== 'executing') return;
 
-    const nextTask = tasks.find(t => 
+    // Server-Authoritative Swarm Tick Query
+    let nextTask = tasks.find(t => 
       t.status === 'pending' && 
       t.dependencies.every(depId => tasks.find(tt => tt.id === depId)?.status === 'done')
     );
+
+    try {
+      const tickRes = await fetch('/api/swarm/tick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: activeJob.id, tasks, agents })
+      });
+      if (tickRes.ok) {
+        const tickData = await tickRes.json();
+        if (tickData.readyTask?.id) {
+          const matched = tasks.find(t => t.id === tickData.readyTask.id);
+          if (matched && matched.status === 'pending') {
+            nextTask = matched;
+          }
+        }
+      }
+    } catch {
+      // Resilient fallback to client-side dependency graph
+    }
 
     if (!nextTask) {
       if (tasks.length > 0 && tasks.every(t => t.status === 'done')) {
@@ -226,8 +264,36 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     }
 
     try {
-      const agentId = nextTask.assigned_agents[0];
-      const agent = agents.find(a => a.id === agentId);
+      // Pheromone-Driven Autonomous Attraction Engine
+      // Rank candidate agents using skill match multiplied by relationship pheromone density
+      const candidateIds = nextTask.assigned_agents && nextTask.assigned_agents.length > 0
+        ? nextTask.assigned_agents
+        : agents.map(a => a.id);
+
+      const scoredCandidates = candidateIds.map(candId => {
+        const candAgent = agents.find(a => a.id === candId);
+        if (!candAgent) return { agent: null, score: 0 };
+
+        const taskTags = nextTask?.routing_tags || [];
+        const skillMatches = candAgent.skills.filter(s =>
+          taskTags.some(tag => s.toLowerCase().includes(tag.toLowerCase())) ||
+          (nextTask?.description || '').toLowerCase().includes(s.toLowerCase())
+        ).length;
+        const baseScore = 1 + skillMatches * 0.5;
+
+        // Pheromone link weight from prior successful collaborations
+        let pheromoneBonus = 1.0;
+        allRelationships.forEach(rel => {
+          if (rel.sourceId === candId || rel.targetId === candId) {
+            pheromoneBonus += (rel.trust || 0.5) * 0.15 + (rel.collaborationSuccess || 0) * 0.05;
+          }
+        });
+
+        return { agent: candAgent, score: baseScore * Math.min(2.5, pheromoneBonus) };
+      }).filter((c): c is { agent: AgentCard; score: number } => c.agent !== null);
+
+      scoredCandidates.sort((a, b) => b.score - a.score);
+      const agent = scoredCandidates[0]?.agent || agents.find(a => a.id === nextTask?.assigned_agents?.[0]) || agents[0];
       
       if (!agent) {
          await updateDoc(taskRef, { status: 'failed', updatedAt: serverTimestamp() });
@@ -351,12 +417,68 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     } catch (e) {
       console.error('Execution failure:', e);
     }
-  }, [activeJob?.id, activeJob?.status, tasks, agents, getLifecycleStage, setLegacyAgent]);
+  }, [activeJob?.id, activeJob?.status, tasks, agents, allRelationships, getLifecycleStage, setLegacyAgent]);
 
   useEffect(() => {
     const interval = setInterval(runExecutionLoop, 5000);
     return () => clearInterval(interval);
   }, [runExecutionLoop]);
+
+  const handleRateTask = async (taskId: string, rating: 'up' | 'down') => {
+    if (!user || !activeJob?.id) return;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.assigned_agents?.[0]) return;
+    
+    const assignedAgentId = task.assigned_agents[0];
+    const taskRef = doc(db, 'jobs', activeJob.id, 'tasks', taskId);
+    const agentRef = doc(db, 'agents', assignedAgentId);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const agentDoc = await transaction.get(agentRef);
+        if (!agentDoc.exists()) return;
+
+        const agentData = agentDoc.data();
+        const currentRep = agentData.reputation ?? 50;
+        const currentTrust = agentData.trustScore ?? 50;
+        const currentExp = agentData.exp ?? 0;
+
+        const isUp = rating === 'up';
+        const repDelta = isUp ? 5 : -3;
+        const trustDelta = isUp ? 4 : -3;
+        const expDelta = isUp ? 100 : 10;
+
+        const newRep = Math.max(1, Math.min(100, currentRep + repDelta));
+        const newTrust = Math.max(1, Math.min(100, currentTrust + trustDelta));
+        const newExp = currentExp + expDelta;
+
+        const newHistoryItem = {
+          score: newRep,
+          timestamp: new Date().toISOString(),
+          reason: `Human review: ${isUp ? 'Approved artifact (+5 rep, +4 trust)' : 'Critiqued artifact (-3 rep, -3 trust)'}`
+        };
+
+        transaction.update(taskRef, {
+          'output.userRating': {
+            type: rating,
+            ratedAt: new Date().toISOString(),
+            userId: user.uid
+          },
+          updatedAt: serverTimestamp()
+        });
+
+        transaction.update(agentRef, {
+          reputation: newRep,
+          trustScore: newTrust,
+          exp: newExp,
+          reputation_history: [...(agentData.reputation_history || []), newHistoryItem].slice(-20),
+          updatedAt: serverTimestamp()
+        });
+      });
+    } catch (err) {
+      console.error('Failed to rate task:', err);
+    }
+  };
 
   return {
     jobs,
@@ -366,6 +488,7 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     allTasks,
     allRelationships,
     handleStartJob,
+    handleRateTask,
     currentEnvironment,
     setCurrentEnvironment
   };

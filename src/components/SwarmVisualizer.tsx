@@ -3,8 +3,9 @@ import * as d3 from 'd3';
 import { AgentCard, SwarmTask } from '../types';
 import { SWARM_RULES, SwarmConnection } from '../data/interactionRules';
 import { ProductivityHeatmap } from './ProductivityHeatmap.tsx';
+import { LineageVisualizer } from './LineageVisualizer.tsx';
 import { motion, AnimatePresence } from 'motion/react';
-import { Share2, Clock, Info, Activity, LayoutGrid, Network, BarChart3, Fingerprint } from 'lucide-react';
+import { Share2, Clock, Info, Activity, LayoutGrid, Network, BarChart3, Fingerprint, GitBranch } from 'lucide-react';
 
 interface Props {
   agents: AgentCard[];
@@ -12,7 +13,7 @@ interface Props {
   relationships?: any[]; // Using any[] for now or fetch and import type
 }
 
-type ViewMode = 'graph' | 'cluster' | 'heatmap';
+type ViewMode = 'graph' | 'cluster' | 'heatmap' | 'genealogy';
 
 export const SwarmVisualizer: React.FC<Props> = ({ agents = [], tasks = [], relationships = [] }) => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -268,36 +269,47 @@ export const SwarmVisualizer: React.FC<Props> = ({ agents = [], tasks = [], rela
             >
               <Activity size={14} /> Yield
             </button>
+            <button 
+              onClick={() => setViewMode('genealogy')}
+              className={`flex items-center gap-2 px-4 py-2 font-mono text-[10px] uppercase tracking-widest transition-all ${viewMode === 'genealogy' ? 'bg-black text-white' : 'opacity-40 hover:opacity-100'}`}
+            >
+              <GitBranch size={14} /> Genealogy
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-3 bg-[#fdfdfd] border-4 border-black editorial-shadow relative h-[450px] overflow-hidden">
-            <AnimatePresence mode="wait">
-              {viewMode !== 'heatmap' ? (
-                <motion.svg 
-                  key="viz"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  ref={svgRef} 
-                  width="800" 
-                  height="450" 
-                  viewBox="0 0 800 450" 
-                  className="w-full h-full bg-[#fdfdfd] cursor-grab active:cursor-grabbing"
-                />
-              ) : (
-                <motion.div
-                  key="heat"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="w-full h-full p-8 overflow-y-auto"
-                >
-                  <ProductivityHeatmap tasks={tasks} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+        {viewMode === 'genealogy' ? (
+          <div className="w-full">
+            <LineageVisualizer agents={agents} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="lg:col-span-3 bg-[#fdfdfd] border-4 border-black editorial-shadow relative h-[450px] overflow-hidden">
+              <AnimatePresence mode="wait">
+                {viewMode !== 'heatmap' ? (
+                  <motion.svg 
+                    key="viz"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    ref={svgRef} 
+                    width="800" 
+                    height="450" 
+                    viewBox="0 0 800 450" 
+                    className="w-full h-full bg-[#fdfdfd] cursor-grab active:cursor-grabbing"
+                  />
+                ) : (
+                  <motion.div
+                    key="heat"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="w-full h-full p-8 overflow-y-auto"
+                  >
+                    <ProductivityHeatmap tasks={tasks} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
             {hoveredAgent && (
               <motion.div 
@@ -391,7 +403,8 @@ export const SwarmVisualizer: React.FC<Props> = ({ agents = [], tasks = [], rela
             </div>
           </div>
         </div>
-      </section>
+      )}
+    </section>
 
       <section>
         <div className="flex items-center gap-2 mb-6 border-b border-black pb-2">

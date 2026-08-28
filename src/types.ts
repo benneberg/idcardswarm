@@ -66,6 +66,7 @@ export interface AgentCard {
   lineage?: {
     parent_id?: string;
     generation: number;
+    mutations?: string[];
   };
   createdAt: string;
   updatedAt: string;

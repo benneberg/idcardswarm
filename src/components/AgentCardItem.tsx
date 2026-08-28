@@ -1,14 +1,15 @@
 import React from 'react';
 import { AgentCard } from '../types';
 import { motion } from 'motion/react';
-
 import { EntityRelationship } from '../types';
+import { Eye, Download } from 'lucide-react';
 
 interface Props {
   agent: AgentCard;
   relationships?: EntityRelationship[];
   onSelect?: (agent: AgentCard) => void;
   onCompare?: (agent: AgentCard) => void;
+  onShowcase?: (agent: AgentCard) => void;
   className?: string;
   selected?: boolean;
   status?: 'Available' | 'Busy' | 'In Training';
@@ -19,6 +20,7 @@ export const AgentCardItem: React.FC<Props> = ({
   relationships = [], 
   onSelect, 
   onCompare,
+  onShowcase,
   className = '', 
   selected, 
   status = 'Available' 
@@ -26,6 +28,36 @@ export const AgentCardItem: React.FC<Props> = ({
   const isSimulator = agent.mode === 'simulator';
   const isCritic = agent.mode === 'critic';
   const persona = agent.persona_metadata;
+
+  const handleQuickDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const blueprint = {
+      version: '3.0.0',
+      exportedAt: new Date().toISOString(),
+      agent: {
+        role: agent.role,
+        mode: agent.mode,
+        skills: agent.skills,
+        experience_level: agent.experience_level || 'mid',
+        behavior_rules: agent.behavior_rules,
+        capability_vector: agent.capability_vector || {},
+        priority_bias: agent.priority_bias || {},
+        persona_metadata: agent.persona_metadata || null,
+        level: agent.level || 1,
+        reputation: agent.reputation || 50,
+        trustScore: agent.trustScore || 50,
+        lineage: agent.lineage || { generation: 1 }
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(blueprint, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${agent.role.toLowerCase().replace(/[^a-z0-9]/g, '_')}_blueprint.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const currentLevel = agent.level || 1;
   const currentExp = agent.exp || 0;
@@ -175,21 +207,39 @@ export const AgentCardItem: React.FC<Props> = ({
         }`}>
           RULE: {agent.behavior_rules[0] || 'Executing protocol.'}
         </div>
-        <button 
-          onClick={(e) => { e.stopPropagation(); onCompare?.(agent); }}
-          className={`p-1.5 border transition-all ${
-            selected ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white border-black hover:bg-stone-100'
-          }`}
-          title="Add to Comparison"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="16 3 21 3 21 8"></polyline>
-            <line x1="4" y1="20" x2="21" y2="3"></line>
-            <polyline points="21 16 21 21 16 21"></polyline>
-            <line x1="15" y1="15" x2="21" y2="21"></line>
-            <line x1="4" y1="4" x2="9" y2="9"></line>
-          </svg>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button 
+            onClick={handleQuickDownload}
+            className="p-1.5 border border-black bg-white hover:bg-stone-100 transition-colors text-black"
+            title="Download Blueprint JSON"
+          >
+            <Download size={12} />
+          </button>
+          {onShowcase && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onShowcase(agent); }}
+              className="p-1.5 border border-black bg-white hover:bg-stone-100 transition-colors text-black"
+              title="View Certified idCard Profile"
+            >
+              <Eye size={12} />
+            </button>
+          )}
+          <button 
+            onClick={(e) => { e.stopPropagation(); onCompare?.(agent); }}
+            className={`p-1.5 border transition-all ${
+              selected ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white border-black hover:bg-stone-100 text-black'
+            }`}
+            title="Add to Comparison"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 3 21 3 21 8"></polyline>
+              <line x1="4" y1="20" x2="21" y2="3"></line>
+              <polyline points="21 16 21 21 16 21"></polyline>
+              <line x1="15" y1="15" x2="21" y2="21"></line>
+              <line x1="4" y1="4" x2="9" y2="9"></line>
+            </svg>
+          </button>
+        </div>
       </div>
     </motion.div>
   );

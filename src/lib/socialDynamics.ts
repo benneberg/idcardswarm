@@ -181,3 +181,26 @@ export const applyInfluence = (influencer: AgentCard, influenced: AgentCard, env
   }
   return null;
 };
+
+/**
+ * Mathematical Trust Erosion & Temporal Decay Model
+ * When relationships remain idle without joint execution or interactions,
+ * their trust score gradually regresses toward the neutral baseline (0.50).
+ *
+ * @param currentTrust Current trust score [0.1, 0.9]
+ * @param elapsedCycles Number of idle cycles or time steps
+ * @param decayRate Decay constant (default 0.05 per cycle)
+ * @returns Decayed trust score strictly bounded in [0.1, 0.9]
+ */
+export function decayTrust(
+  currentTrust: number,
+  elapsedCycles: number = 1,
+  decayRate: number = 0.05
+): number {
+  const BASELINE = 0.50;
+  // Trust regresses toward 0.5: T_new = BASELINE + (T_old - BASELINE) * (1 - decayRate)^elapsedCycles
+  const factor = Math.pow(Math.max(0, 1 - decayRate), Math.max(0, elapsedCycles));
+  const newTrust = BASELINE + (currentTrust - BASELINE) * factor;
+  return Number(Math.max(0.1, Math.min(0.9, newTrust)).toFixed(4));
+}
+

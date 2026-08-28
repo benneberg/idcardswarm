@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { calculateInteractionChance, simulateBond, exchangeKnowledge, applyInfluence, applyEnvironmentalModifiers } from '../lib/socialDynamics';
+import { calculateInteractionChance, simulateBond, exchangeKnowledge, applyInfluence, applyEnvironmentalModifiers, decayTrust } from '../lib/socialDynamics';
 import { spawnOffspring } from '../lib/agentService';
 import { AgentCard, SwarmEnvironment } from '../types';
 
@@ -184,3 +184,29 @@ describe('Inheritance Fidelity (spawnOffspring)', () => {
     expect(offspring.persona_metadata!.name).toBe('Ada II');
   });
 });
+
+describe('Mathematical Trust Erosion & Temporal Decay (decayTrust)', () => {
+  it('should decay high trust toward 0.50 baseline over cycles', () => {
+    const initialTrust = 0.85;
+    const decayed1 = decayTrust(initialTrust, 1, 0.1);
+    const decayed5 = decayTrust(initialTrust, 5, 0.1);
+
+    expect(decayed1).toBeLessThan(initialTrust);
+    expect(decayed5).toBeLessThan(decayed1);
+    expect(decayed5).toBeGreaterThanOrEqual(0.50);
+  });
+
+  it('should regress low trust upward toward 0.50 baseline over cycles', () => {
+    const initialTrust = 0.20;
+    const decayed = decayTrust(initialTrust, 3, 0.1);
+
+    expect(decayed).toBeGreaterThan(initialTrust);
+    expect(decayed).toBeLessThanOrEqual(0.50);
+  });
+
+  it('should respect boundaries within [0.1, 0.9]', () => {
+    expect(decayTrust(0.95, 1)).toBeLessThanOrEqual(0.9);
+    expect(decayTrust(0.05, 1)).toBeGreaterThanOrEqual(0.1);
+  });
+});
+

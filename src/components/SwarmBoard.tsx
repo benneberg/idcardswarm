@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { AgentCard, SwarmJob, SwarmTask, SwarmEnvironment, SwarmEnvironmentCondition } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Plus, Search, Activity, ChevronRight, CheckCircle2, AlertCircle, Loader2, Users, CloudRain, Sun, Wind, CloudLightning, ShieldAlert } from 'lucide-react';
+import { Play, Plus, Search, Activity, ChevronRight, CheckCircle2, AlertCircle, Loader2, Users, CloudRain, Sun, Wind, CloudLightning, ShieldAlert, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { SocialFeed } from './SocialFeed';
 
 interface Props {
   agents: AgentCard[];
   onStartJob: (goal: string, selectedAgentIds: string[]) => void;
+  onRateTask?: (taskId: string, rating: 'up' | 'down') => void;
   activeJob?: SwarmJob;
   tasks: SwarmTask[];
   relationships?: any[];
@@ -17,6 +18,7 @@ interface Props {
 export const SwarmBoard: React.FC<Props> = ({ 
   agents = [], 
   onStartJob, 
+  onRateTask,
   activeJob, 
   tasks = [], 
   relationships = [],
@@ -204,8 +206,49 @@ export const SwarmBoard: React.FC<Props> = ({
                     </div>
                     <p className="font-sans text-sm italic mb-4 opacity-70">"{task.description}"</p>
                     {task.output?.content && (
-                      <div className="mt-4 p-4 bg-stone-50 editorial-border font-mono text-[11px] max-h-40 overflow-y-auto whitespace-pre-wrap">
-                        {task.output.content}
+                      <div className="mt-4 space-y-2">
+                        <div className="p-4 bg-stone-50 editorial-border font-mono text-[11px] max-h-40 overflow-y-auto whitespace-pre-wrap">
+                          {task.output.content}
+                        </div>
+
+                        {/* Human-in-the-Loop Feedback Controls */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-black/10">
+                          <span className="font-mono text-[9px] uppercase opacity-60">
+                            Executed By: {agents.find(a => a.id === task.assigned_agents?.[0])?.role || 'Swarm Node'}
+                          </span>
+
+                          <div className="flex items-center gap-2">
+                            {(task.output as any)?.userRating ? (
+                              <span className={`px-2 py-0.5 font-mono text-[9px] uppercase font-bold border ${
+                                (task.output as any).userRating.type === 'up'
+                                  ? 'bg-green-50 border-green-600 text-green-800'
+                                  : 'bg-red-50 border-red-600 text-red-800'
+                              }`}>
+                                {(task.output as any).userRating.type === 'up' ? '✓ Approved (+5 Rep)' : 'Critiqued (-3 Rep)'}
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-[9px] uppercase opacity-50">Review:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => onRateTask?.(task.id, 'up')}
+                                  className="px-2 py-1 border border-black bg-white hover:bg-green-50 text-green-700 transition-colors flex items-center gap-1 text-[9px] font-mono font-bold uppercase"
+                                  title="Approve artifact (+5 Rep, +4 Trust)"
+                                >
+                                  <ThumbsUp size={10} /> Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onRateTask?.(task.id, 'down')}
+                                  className="px-2 py-1 border border-black bg-white hover:bg-red-50 text-red-700 transition-colors flex items-center gap-1 text-[9px] font-mono font-bold uppercase"
+                                  title="Critique artifact (-3 Rep, -3 Trust)"
+                                >
+                                  <ThumbsDown size={10} /> Critique
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

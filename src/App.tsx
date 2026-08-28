@@ -18,6 +18,8 @@ import { AffinityMapper } from './components/AffinityMapper.tsx';
 import { PersonaWorkspaceInteraction } from './components/PersonaWorkspaceInteraction.tsx';
 import { AgentLog } from './components/AgentLog.tsx';
 import { SwarmMethodologyGuide } from './components/SwarmMethodologyGuide.tsx';
+import { AgentShowcaseModal } from './components/AgentShowcaseModal.tsx';
+import { BlueprintImportModal } from './components/BlueprintImportModal.tsx';
 import { USER_PERSONAS, UserPersona } from './data/userPersonas.ts';
 import { spawnOffspring } from './lib/agentService.ts';
 import { 
@@ -29,7 +31,7 @@ import {
 import { auth } from './lib/firebase.ts';
 import type { AgentCard } from './types.ts';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, ClipboardList, Settings, Loader2, Share2, X, Search, Plus, AlertCircle, GitBranch, BookOpen } from 'lucide-react';
+import { Users, ClipboardList, Settings, Loader2, Share2, X, Search, Plus, AlertCircle, GitBranch, BookOpen, Upload, SlidersHorizontal, RotateCcw } from 'lucide-react';
 
 // Modular Hooks
 import { useAgentRegistry } from './hooks/useAgentRegistry';
@@ -44,9 +46,17 @@ export default function App() {
   const [filterMode, setFilterMode] = useState<'all' | 'executor' | 'critic'>('all');
   const [selectedPersona, setSelectedPersona] = useState<UserPersona | null>(null);
   const [showCreator, setShowCreator] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showcaseAgent, setShowcaseAgent] = useState<AgentCard | null>(null);
   const [selectedLogAgent, setSelectedLogAgent] = useState<AgentCard | null>(null);
   const [selectedForComparison, setSelectedForComparison] = useState<AgentCard[]>([]);
   const [selectedUserPersonas, setSelectedUserPersonas] = useState<UserPersona[]>([]);
+
+  // Advanced Capability Threshold Filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [minTechnical, setMinTechnical] = useState(0);
+  const [minCreativity, setMinCreativity] = useState(0);
+  const [minReliability, setMinReliability] = useState(0);
 
   // Authentication
   useEffect(() => {
@@ -72,14 +82,38 @@ export default function App() {
     allTasks, 
     allRelationships, 
     handleStartJob,
+    handleRateTask,
     currentEnvironment,
     setCurrentEnvironment
   } = useSwarmManager(user, agents, getLifecycleStage, setLegacyAgent);
 
+  // Deep linking: auto-open showcase if ?agentId=... is in query params
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const agentId = params.get('agentId');
+    if (agentId && agents.length > 0) {
+      const found = agents.find(a => a.id === agentId);
+      if (found) {
+        setShowcaseAgent(found);
+      }
+    }
+  }, [agents]);
+
   const filteredAgents = agents
     .filter(a => filterMode === 'all' || a.mode === filterMode)
-    .filter(a => a.role.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                 a.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())));
+    .filter(a => {
+      const vec = a.capability_vector || {};
+      if (minTechnical > 0 && (Number(vec.technical_depth) || 0) < minTechnical) return false;
+      if (minCreativity > 0 && (Number(vec.creativity) || 0) < minCreativity) return false;
+      if (minReliability > 0 && (Number(vec.reliability) || 0) < minReliability) return false;
+      return true;
+    })
+    .filter(a => 
+      a.role.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      a.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (a.persona_metadata?.name && a.persona_metadata.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
 
   if (!user && !registryLoading) {
     return (
@@ -179,7 +213,7 @@ export default function App() {
                     Monitor agent intelligence and evolutionary <span className="underline underline-offset-8 decoration-1">patterns</span> within the ecosystem.
                   </p>
                   <p className="text-[10px] font-mono uppercase tracking-[0.2em] mb-4 opacity-40 italic">Agent Status: {agents.length} Active Profiles</p>
-                  <div className="flex flex-col md:flex-row gap-6 mb-8 mr-2">
+                  <div className="flex flex-col md:flex-row gap-4 mb-4 mr-2">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/20" size={14} />
                       <input type="text" placeholder="Search by role or capability..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white border border-black/10 py-3 pl-10 pr-4 text-xs font-mono uppercase tracking-widest focus:border-black transition-colors outline-none h-full" />
@@ -189,23 +223,93 @@ export default function App() {
                         <button key={m} onClick={() => setFilterMode(m)} className={`px-4 py-2 text-[8px] font-mono uppercase tracking-widest transition-all ${filterMode === m ? 'bg-black text-white' : 'opacity-40'}`}> {m} </button>
                       ))}
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex flex-wrap gap-2">
+                      <button 
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`px-4 py-2 border border-black text-[10px] font-mono uppercase tracking-widest flex items-center gap-1.5 transition-colors ${showFilters ? 'bg-black text-white' : 'bg-white hover:bg-stone-100'}`}
+                      >
+                        <SlidersHorizontal size={11} />
+                        Thresholds
+                      </button>
+                      <button 
+                        onClick={() => setShowImportModal(true)}
+                        className="px-4 py-2 border border-black text-[10px] font-mono uppercase tracking-widest bg-white hover:bg-stone-100 transition-colors flex items-center gap-1.5"
+                      >
+                        <Upload size={11} />
+                        Import
+                      </button>
                       <button 
                         onClick={() => setShowCreator(true)}
-                        className="px-6 py-2 bg-black text-white text-[10px] font-mono uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2 editorial-shadow h-full"
+                        className="px-5 py-2 bg-black text-white text-[10px] font-mono uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2 editorial-shadow"
                       >
-                        <Plus size={10} /> Add Agent
+                        <Plus size={11} /> Add Agent
                       </button>
                       {selectedForComparison.length > 0 && (
                         <button 
                            onClick={() => setSelectedForComparison([])}
-                           className="px-4 py-2 border-2 border-black text-[10px] font-mono uppercase font-bold hover:bg-zinc-100 transition-colors h-full"
+                           className="px-4 py-2 border-2 border-black text-[10px] font-mono uppercase font-bold hover:bg-zinc-100 transition-colors"
                         >
                            Clear ({selectedForComparison.length})
                         </button>
                       )}
                     </div>
                   </div>
+
+                  {showFilters && (
+                    <div className="p-4 bg-stone-50 border border-black/10 mb-6 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-mono uppercase font-bold tracking-widest">
+                          Cognitive Threshold Filter
+                        </span>
+                        {(minTechnical > 0 || minCreativity > 0 || minReliability > 0) && (
+                          <button 
+                            onClick={() => { setMinTechnical(0); setMinCreativity(0); setMinReliability(0); }}
+                            className="text-[9px] font-mono uppercase flex items-center gap-1 text-red-600 hover:underline"
+                          >
+                            <RotateCcw size={10} /> Reset Filters
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-[9px] uppercase">
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span>Min Technical Depth:</span>
+                            <span className="font-bold">{Math.round(minTechnical * 100)}%</span>
+                          </div>
+                          <input 
+                            type="range" min="0" max="0.9" step="0.05"
+                            value={minTechnical}
+                            onChange={(e) => setMinTechnical(parseFloat(e.target.value))}
+                            className="w-full accent-black"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span>Min Creativity:</span>
+                            <span className="font-bold">{Math.round(minCreativity * 100)}%</span>
+                          </div>
+                          <input 
+                            type="range" min="0" max="0.9" step="0.05"
+                            value={minCreativity}
+                            onChange={(e) => setMinCreativity(parseFloat(e.target.value))}
+                            className="w-full accent-black"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span>Min Reliability:</span>
+                            <span className="font-bold">{Math.round(minReliability * 100)}%</span>
+                          </div>
+                          <input 
+                            type="range" min="0" max="0.9" step="0.05"
+                            value={minReliability}
+                            onChange={(e) => setMinReliability(parseFloat(e.target.value))}
+                            className="w-full accent-black"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="flex gap-4">
                     <span className="px-3 py-2 border border-[#1A1A1A] text-[10px] font-mono uppercase tracking-widest">Network Health: Stable</span>
@@ -222,14 +326,25 @@ export default function App() {
                     </div>
                  </div>
                  <ArchetypeSelector onSelect={(id) => {
-                   // Integration for spawning groups is handled via future simulation turns
                    console.log('Archetype selection persistent signal emitted:', id);
                  }} />
               </section>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-2">
                 {filteredAgents.map((agent) => (
-                   <AgentCardItem key={agent.id} agent={agent} relationships={allRelationships.filter(r => r.sourceId === agent.id || r.targetId === agent.id)} />
+                   <AgentCardItem 
+                     key={agent.id} 
+                     agent={agent} 
+                     relationships={allRelationships.filter(r => r.sourceId === agent.id || r.targetId === agent.id)} 
+                     onSelect={(a) => setSelectedLogAgent(a)}
+                     onShowcase={(a) => setShowcaseAgent(a)}
+                     onCompare={(a) => setSelectedForComparison(prev => 
+                       prev.some(item => item.id === a.id) 
+                         ? prev.filter(item => item.id !== a.id) 
+                         : [...prev, a].slice(0, 2)
+                     )}
+                     selected={selectedForComparison.some(item => item.id === agent.id)}
+                   />
                 ))}
                 <ArchetypeSelector onSelect={() => {}} agents={agents} userId={user?.uid || ''} />
               </div>
@@ -270,6 +385,7 @@ export default function App() {
                 agents={agents} 
                 relationships={allRelationships}
                 onStartJob={handleStartJob}
+                onRateTask={handleRateTask}
                 currentEnvironment={currentEnvironment}
                 setCurrentEnvironment={setCurrentEnvironment}
                 onExecuteJob={async () => {
@@ -398,6 +514,25 @@ export default function App() {
                 onSuccess={() => {/* Toast or notification */}}
               />
             </div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showImportModal && (
+            <BlueprintImportModal 
+              onClose={() => setShowImportModal(false)}
+              onSuccess={(newAgent) => setShowcaseAgent(newAgent)}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showcaseAgent && (
+            <AgentShowcaseModal 
+              agent={showcaseAgent}
+              relationships={allRelationships.filter(r => r.sourceId === showcaseAgent.id || r.targetId === showcaseAgent.id)}
+              onClose={() => setShowcaseAgent(null)}
+            />
           )}
         </AnimatePresence>
 
