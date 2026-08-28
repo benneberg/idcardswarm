@@ -36,40 +36,43 @@ Civitas AI utilizes a **Thin-Server Full-Stack Architecture**.
 1.  **Job Initialization**: User submits a "Job" to Express `/api/swarm/decompose`.
 2.  **AI Decomposition**: Gemini returns 3-5 sub-tasks.
 3.  **Persistence**: Sub-tasks are written to Firestore as a sub-collection of the Job.
-4.  **Execution Loop**: `App.tsx` triggers a task heartbeat. The most suitable agent (high capability match) is assigned.
-5.  **Completion**: Upon success, `capabilityEngine.ts` calculates XP gain. Firestore is updated, triggering a UI refresh via listeners.
+4.  **Execution Loop**: `useSwarmManager.ts` triggers a task heartbeat. The most suitable agent (high capability match) is assigned via atomic Firestore transactions.
+5.  **Completion**: Upon success, `capabilityEngine.ts` calculates XP gain and capability deltas. Firestore is updated, triggering a UI refresh via listeners.
 
-**State Management**: Mixed. Local React state handles UI toggles; Firestore handles the global system state.
+**State Management**: Modular. Domain state is encapsulated in custom hooks (`useSwarmManager`, `useAgentRegistry`); Firestore provides the real-time global persistence tier.
 
 ---
 
 ## EXTERNAL INTEGRATIONS
-*   **Google Gemini API**: Heart of the "Intelligence" tier.
+*   **Google Gemini API**: Heart of the "Intelligence" tier (`@google/genai` with Gemini 2.5 Pro / Flash).
 *   **Firebase**: Database (Firestore) and Auth.
-*   **Dicebear**: Avatar generation for personas.
+*   **Dicebear**: Vector avatar generation for personas.
 
 ---
 
 ## DEPLOYMENT MODEL
 *   **Platform**: Designed for Platform-as-a-Service (Cloud Run / Vercel + Firebase).
-*   **Build System**: Vite (Frontend) + esbuild (Backend Server bundle). 
-*   **Validation**: CI/CD ready via standard `npm build` and `npx vitest`.
+*   **Build System**: Vite (Frontend) + esbuild (Backend Server bundle in `dist/server.cjs`). 
+*   **Validation**: CI/CD ready via standard `npm run build`, `npm run lint`, and `npx vitest run`.
 
 ---
 
 ## OBSERVABILITY MODEL
-*   **Basic**: `console.log` based structured logs in `server.ts`.
+*   **Structured Logging**: `pino` logger with request IDs and pretty transport in `server.ts`.
 *   **Health**: `/api/health` endpoint exists (Verified in Recent Audit).
-*   **Missing**: No centralized error reporting (e.g., Sentry) or performance tracing for Gemini response times.
+*   **Telemetry Gap**: Latency tracing and response-time percentiles for Gemini API proxies are pending.
 
 ---
 
-## ARCHITECTURAL RISKS
-1.  **Concurrency Hotspots**: Multiple agents updating the same Job object in Firestore. Currently lacks broad usage of `FieldValue.increment()` (uses local math then writes).
-2.  **Monolithic Client**: `App.tsx` handles business logic that should be in a separate state worker or server-side cron.
-3.  **Auth Gaps**: Relationships collection is currently insufficiently guarded (Identified in Audit).
+## ARCHITECTURAL STATUS & RESOLVED RISKS
+1.  **Concurrency Hotspots**: [RESOLVED] Task claiming is now executed inside atomic Firestore transactions to prevent multi-tab execution collisions.
+2.  **Monolithic Client**: [IMPROVED] Extracted domain logic into `useAgentRegistry` and `useSwarmManager` hooks; client-side execution loop still benefits from eventual migration to server-side task worker.
+3.  **Auth Gaps**: [RESOLVED] `relationships` collection rules in `firestore.rules` now strictly enforce that callers own the `sourceId` or `targetId` agents.
 
-## RECOMMENDED IMPROVEMENTS
-*   **P0**: Secure `relationships` match rules in `firestore.rules`. (In Progress)
-*   **P1**: Move global execution tick (`setInterval`) from client to a single server-side task worker to prevent multi-tab collisions.
-*   **P2**: Migrate `App.tsx` state to **Zustand** or **Redux** for better observability.
+---
+
+## REMAINING ARCHITECTURAL TASKS
+*   **P0 (Security & Resilience)**: Implement token-bucket / sliding-window rate limiting on `/api/swarm/*` endpoints to guard against API quota exhaustion.
+*   **P1 (Autonomous Execution)**: Move global execution tick (`setInterval`) from client `useSwarmManager` to a server-side background task worker / cron endpoint.
+*   **P2 (Observability)**: Add duration timing and structured latency metrics to Gemini proxy endpoints in `server.ts`.
+*   **P3 (State Architecture)**: Migrate global client state to Zustand if multi-screen cross-component dependencies expand.
