@@ -55,8 +55,8 @@ service cloud.firestore {
         incoming().diff(existing()).affectedKeys().hasOnly([
           'role', 'mode', 'skills', 'experience_level', 'strengths', 'weaknesses', 'tools', 
           'behavior_rules', 'context_budget', 'priority_bias', 'capability_vector', 
-          'level', 'exp', 'skill_points', 'reputation', 'trustScore', 'lifecycle_stage', 
-          'satisfaction', 'lineage', 'persona_metadata', 'reputation_history', 'ownerId', 'updatedAt'
+          'level', 'exp', 'skill_points', 'reputation', 'reputation_tokens', 'trustScore', 'lifecycle_stage', 
+          'satisfaction', 'lineage', 'persona_metadata', 'reputation_history', 'institution_id', 'guild_name', 'ownerId', 'updatedAt'
         ])
       );
       allow delete: if isSignedIn() && isOwner(existing().ownerId);
@@ -88,7 +88,9 @@ service cloud.firestore {
         get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid
       ) && (
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'status', 'output', 'confidence', 'startTime', 'duration', 'updatedAt', 'complexity'
+          'status', 'output', 'confidence', 'startTime', 'duration', 'updatedAt', 'complexity',
+          'assigned_agents', 'bids', 'winning_bid', 'parent_task_id', 'is_delegated',
+          'delegated_by', 'delegated_to', 'delegation_reason', 'subtask_ids'
         ])
       );
       allow delete: if isSignedIn() && (
@@ -109,6 +111,20 @@ service cloud.firestore {
     match /jobs/{jobId}/tasks/{taskId}/evaluations/{evalId} {
       allow read: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
       allow create: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
+    }
+
+    // Institutions
+    match /institutions/{instId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    // Workspaces
+    match /workspaces/{workspaceId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
     // Relationships
     match /relationships/{relId} {

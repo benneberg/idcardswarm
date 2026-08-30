@@ -131,6 +131,10 @@ export const AgentCardItem: React.FC<Props> = ({
                 <p className="text-[8px] opacity-40 font-mono uppercase">Trust Score</p>
                 <p className="text-xs font-serif font-bold italic">{trustScore}</p>
               </div>
+              <div>
+                <p className="text-[8px] opacity-40 font-mono uppercase">Market Tokens</p>
+                <p className="text-xs font-serif font-bold italic text-amber-700">{agent.reputation_tokens ?? 100} TKN</p>
+              </div>
            </div>
            {persona?.personality && (
              <div className="flex gap-1 items-end h-6">
@@ -180,8 +184,13 @@ export const AgentCardItem: React.FC<Props> = ({
               {persona.occupation} • Age {persona.age}
             </p>
             {persona.institution && (
-              <span className="inline-block px-2 py-0.5 mb-2 bg-stone-100 border border-black/10 text-[8px] font-mono uppercase tracking-widest text-black/60">
+              <span className="inline-block px-2 py-0.5 mb-2 bg-stone-100 border border-black/10 text-[8px] font-mono uppercase tracking-widest text-black/60 mr-1">
                 {persona.institution}
+              </span>
+            )}
+            {agent.institution_id && (
+              <span className="inline-block px-2 py-0.5 mb-2 bg-indigo-50 border border-indigo-200 text-[8px] font-mono uppercase tracking-widest text-indigo-700 font-bold">
+                Guild: {agent.institution_id.replace(/^inst_/, '').replace(/_/g, ' ')}
               </span>
             )}
             <p className="text-[11px] leading-relaxed opacity-70 line-clamp-2 italic">

@@ -17,7 +17,21 @@ import {
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { computeCapabilityDeltas } from '../lib/capabilityEngine';
 import { simulateBond, exchangeKnowledge, applyInfluence, applyEnvironmentalModifiers } from '../lib/socialDynamics';
-import type { SwarmJob, SwarmTask, EntityRelationship, AgentCard, SwarmEnvironment } from '../types';
+import { canDelegate, selectDelegationPeer, createDelegatedSubtask } from '../lib/delegationEngine';
+import { PREDEFINED_INSTITUTIONS, applyInstitutionalBuffs } from '../lib/institutionEngine';
+import { conductTaskAuction, calculateMarketDividend, DEFAULT_INITIAL_TOKENS } from '../lib/marketBiddingEngine';
+import { hasWorkspacePermission, createWorkspaceInvite } from '../lib/workspaceEngine';
+import type { 
+  SwarmJob, 
+  SwarmTask, 
+  EntityRelationship, 
+  AgentCard, 
+  SwarmEnvironment,
+  Institution,
+  Workspace,
+  WorkspaceCollaborator,
+  WorkspaceRole
+} from '../types';
 
 export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStage: (level: number, stage: string) => string, setLegacyAgent: (agent: AgentCard) => void) {
   const [jobs, setJobs] = useState<SwarmJob[]>([]);
@@ -25,12 +39,62 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
   const [tasks, setTasks] = useState<SwarmTask[]>([]);
   const [allTasks, setAllTasks] = useState<SwarmTask[]>([]);
   const [allRelationships, setAllRelationships] = useState<EntityRelationship[]>([]);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
+  const [collaborators, setCollaborators] = useState<WorkspaceCollaborator[]>([]);
+  const [simulatedRole, setSimulatedRole] = useState<WorkspaceRole>('admin');
   const [currentEnvironment, setCurrentEnvironment] = useState<SwarmEnvironment>({
     condition: 'innovation_phase',
     intensity: 0.5,
     resources: 0.8,
     activeObstacles: []
   });
+
+  // Synchronize Institutions (seed canonical guilds if collection is empty)
+  useEffect(() => {
+    if (!user) return;
+    const unsubInst = onSnapshot(collection(db, 'institutions'), async (snapshot) => {
+      if (snapshot.empty) {
+        for (const inst of PREDEFINED_INSTITUTIONS) {
+          await setDoc(doc(db, 'institutions', inst.id), {
+            ...inst,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }).catch(() => {});
+        }
+      } else {
+        setInstitutions(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Institution)));
+      }
+    });
+    return () => unsubInst();
+  }, [user]);
+
+  // Synchronize Workspace and Collaborators
+  useEffect(() => {
+    if (!user) return;
+    const wsRef = doc(db, 'workspaces', `ws_${user.uid}`);
+    const unsubWs = onSnapshot(wsRef, async (snap) => {
+      if (!snap.exists()) {
+        const initialWs: Workspace = {
+          id: `ws_${user.uid}`,
+          name: 'Civitas Primary Swarm',
+          ownerId: user.uid,
+          ownerEmail: user.email || 'operator@civitas.ai',
+          collaborators: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        await setDoc(wsRef, initialWs).catch(() => {});
+        setCurrentWorkspace(initialWs);
+        setCollaborators([]);
+      } else {
+        const data = snap.data() as Workspace;
+        setCurrentWorkspace({ ...data, id: snap.id });
+        setCollaborators(data.collaborators || []);
+      }
+    });
+    return () => unsubWs();
+  }, [user]);
 
   // Listen to Jobs
   useEffect(() => {
@@ -152,6 +216,12 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
   const handleStartJob = async (goal: string, selectedAgentIds: string[]) => {
     if (!user) return;
 
+    // Workspace RBAC: enforce orchestrate permission
+    if (!hasWorkspacePermission(simulatedRole, 'orchestrate')) {
+      alert(`Access Restricted: The '${simulatedRole}' role cannot initiate swarm jobs. Switch to 'contributor' or 'admin' in the Collaborators & RBAC panel.`);
+      return;
+    }
+
     const jobData: Partial<SwarmJob> = {
       goal,
       teamId: 'custom',
@@ -264,48 +334,107 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     }
 
     try {
-      // Pheromone-Driven Autonomous Attraction Engine
-      // Rank candidate agents using skill match multiplied by relationship pheromone density
-      const candidateIds = nextTask.assigned_agents && nextTask.assigned_agents.length > 0
-        ? nextTask.assigned_agents
-        : agents.map(a => a.id);
-
-      const scoredCandidates = candidateIds.map(candId => {
-        const candAgent = agents.find(a => a.id === candId);
-        if (!candAgent) return { agent: null, score: 0 };
-
-        const taskTags = nextTask?.routing_tags || [];
-        const skillMatches = candAgent.skills.filter(s =>
-          taskTags.some(tag => s.toLowerCase().includes(tag.toLowerCase())) ||
-          (nextTask?.description || '').toLowerCase().includes(s.toLowerCase())
-        ).length;
-        const baseScore = 1 + skillMatches * 0.5;
-
-        // Pheromone link weight from prior successful collaborations
-        let pheromoneBonus = 1.0;
-        allRelationships.forEach(rel => {
-          if (rel.sourceId === candId || rel.targetId === candId) {
-            pheromoneBonus += (rel.trust || 0.5) * 0.15 + (rel.collaborationSuccess || 0) * 0.05;
+      // 1. MARKET-BASED TASK BIDDING & REPUTATION AUCTION
+      let auctionWinningBid = nextTask.winning_bid;
+      let taskBids = nextTask.bids || [];
+      if (!auctionWinningBid && agents.length > 0) {
+        const auction = conductTaskAuction(nextTask, agents);
+        if (auction.winningBid) {
+          auctionWinningBid = auction.winningBid;
+          taskBids = auction.allBids;
+          
+          // Deduct wagered reputation tokens from winning agent
+          const winningAgentObj = agents.find(a => a.id === auction.winningBid!.agentId);
+          if (winningAgentObj) {
+            const curToks = winningAgentObj.reputation_tokens ?? DEFAULT_INITIAL_TOKENS;
+            await updateDoc(doc(db, 'agents', winningAgentObj.id), {
+              reputation_tokens: Math.max(0, curToks - auction.winningBid.bidAmount),
+              updatedAt: serverTimestamp()
+            }).catch(() => {});
           }
-        });
+        }
+      }
 
-        return { agent: candAgent, score: baseScore * Math.min(2.5, pheromoneBonus) };
-      }).filter((c): c is { agent: AgentCard; score: number } => c.agent !== null);
+      // 2. AGENT SELECTION: Prefer Auction Winner, then Pheromone-Attraction Engine
+      let agent: AgentCard | undefined;
+      if (auctionWinningBid) {
+        agent = agents.find(a => a.id === auctionWinningBid!.agentId);
+      }
 
-      scoredCandidates.sort((a, b) => b.score - a.score);
-      const agent = scoredCandidates[0]?.agent || agents.find(a => a.id === nextTask?.assigned_agents?.[0]) || agents[0];
+      if (!agent) {
+        const candidateIds = nextTask.assigned_agents && nextTask.assigned_agents.length > 0
+          ? nextTask.assigned_agents
+          : agents.map(a => a.id);
+
+        const scoredCandidates = candidateIds.map(candId => {
+          const candAgent = agents.find(a => a.id === candId);
+          if (!candAgent) return { agent: null, score: 0 };
+
+          const taskTags = nextTask?.routing_tags || [];
+          const skillMatches = candAgent.skills.filter(s =>
+            taskTags.some(tag => s.toLowerCase().includes(tag.toLowerCase())) ||
+            (nextTask?.description || '').toLowerCase().includes(s.toLowerCase())
+          ).length;
+          const baseScore = 1 + skillMatches * 0.5;
+
+          let pheromoneBonus = 1.0;
+          allRelationships.forEach(rel => {
+            if (rel.sourceId === candId || rel.targetId === candId) {
+              pheromoneBonus += (rel.trust || 0.5) * 0.15 + (rel.collaborationSuccess || 0) * 0.05;
+            }
+          });
+
+          return { agent: candAgent, score: baseScore * Math.min(2.5, pheromoneBonus) };
+        }).filter((c): c is { agent: AgentCard; score: number } => c.agent !== null);
+
+        scoredCandidates.sort((a, b) => b.score - a.score);
+        agent = scoredCandidates[0]?.agent || agents.find(a => a.id === nextTask?.assigned_agents?.[0]) || agents[0];
+      }
       
       if (!agent) {
          await updateDoc(taskRef, { status: 'failed', updatedAt: serverTimestamp() });
          return;
       }
 
+      // 3. AUTONOMOUS PEER-TO-PEER TASK DELEGATION
+      if (canDelegate(agent, nextTask)) {
+        const peerMatch = selectDelegationPeer(agent, agents, allRelationships, nextTask.routing_tags);
+        if (peerMatch) {
+          const delegatedDraft = createDelegatedSubtask(nextTask, agent, peerMatch.peer);
+          try {
+            const subDoc = await addDoc(collection(db, 'jobs', activeJob.id, 'tasks'), {
+              ...delegatedDraft,
+              jobId: activeJob.id,
+              userId: user.uid,
+              status: 'pending',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            await updateDoc(taskRef, {
+              subtask_ids: [subDoc.id],
+              delegated_by: agent.id,
+              delegated_to: peerMatch.peer.id,
+              delegation_reason: peerMatch.reason,
+              updatedAt: serverTimestamp()
+            }).catch(() => {});
+          } catch (delegationErr) {
+            console.error('Failed to spawn delegated peer subtask:', delegationErr);
+          }
+        }
+      }
+
+      // 4. INSTITUTIONAL CULTURE BUFFS APPLIED TO EXECUTOR
+      const agentInst = institutions.find(i => 
+        i.id === agent?.institution_id || i.memberAgentIds?.includes(agent?.id || '')
+      );
+      const executionAgent = agentInst ? applyInstitutionalBuffs(agent, agentInst) : agent;
+
       const res = await fetch('/api/swarm/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           task: nextTask, 
-          agent, 
+          agent: executionAgent, 
           context: tasks.filter(t => t.status === 'done').map(t => t.output?.content).join('\n\n') 
         })
       });
@@ -328,6 +457,16 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
 
       const performanceScore = evalResult.score;
 
+      // 5. MARKET DIVIDEND CALCULATION
+      const complexity = nextTask.complexity || Math.floor(Math.random() * 5) + 3;
+      let tokenDividend = 0;
+      let repDividend = 0;
+      if (auctionWinningBid) {
+        const div = calculateMarketDividend(auctionWinningBid, performanceScore, complexity);
+        tokenDividend = div.tokenDividend;
+        repDividend = div.repDividend;
+      }
+
       // EVOLUTION
       const routingTags = nextTask.routing_tags || [];
       const currentVector = agent.capability_vector || {};
@@ -344,7 +483,6 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
         reason: `Completed task: ${nextTask.description.slice(0, 60)}`,
       };
 
-      const complexity = nextTask.complexity || Math.floor(Math.random() * 5) + 3;
       const xpEarned = Math.round(complexity * 100 * performanceScore);
       const currentExp = (agent.exp || 0) + xpEarned;
       const currentLevel = agent.level || 1;
@@ -366,6 +504,8 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
         lifecycle_stage: nextLifecycle,
         skill_points: (agent.skill_points || 0) + skillPointsEarned,
         satisfaction: Math.min(1, (agent.satisfaction || 0.8) + 0.05),
+        reputation_tokens: (agent.reputation_tokens ?? DEFAULT_INITIAL_TOKENS) + tokenDividend,
+        reputation: Math.max(1, Math.min(100, (agent.reputation ?? 50) + repDividend)),
         capability_vector: updatedVector,
         reputation_history: [
           ...(agent.reputation_history || []).slice(-49),
@@ -410,6 +550,9 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
         output: { content: result.content },
         confidence: performanceScore,
         complexity,
+        assigned_agents: [agent.id],
+        winning_bid: auctionWinningBid || null,
+        bids: taskBids,
         duration: Math.floor((Date.now() - (nextTask.updatedAt ? new Date(nextTask.updatedAt).getTime() : Date.now())) / 1000),
         updatedAt: serverTimestamp() 
       });
@@ -417,7 +560,7 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     } catch (e) {
       console.error('Execution failure:', e);
     }
-  }, [activeJob?.id, activeJob?.status, tasks, agents, allRelationships, getLifecycleStage, setLegacyAgent]);
+  }, [activeJob?.id, activeJob?.status, tasks, agents, allRelationships, institutions, getLifecycleStage, setLegacyAgent, user?.uid, simulatedRole]);
 
   useEffect(() => {
     const interval = setInterval(runExecutionLoop, 5000);
@@ -480,6 +623,101 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     }
   };
 
+  // Helper: Assign Agent to Guild Institution
+  const handleAssignAgentToInstitution = async (agentId: string, institutionId: string) => {
+    if (!user) return;
+    const inst = institutions.find(i => i.id === institutionId);
+    if (!inst) return;
+
+    try {
+      await updateDoc(doc(db, 'agents', agentId), {
+        institution_id: institutionId,
+        updatedAt: serverTimestamp()
+      });
+      const updatedMembers = Array.from(new Set([...(inst.memberAgentIds || []), agentId]));
+      await updateDoc(doc(db, 'institutions', institutionId), {
+        memberAgentIds: updatedMembers,
+        updatedAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('Failed to assign agent to institution:', err);
+    }
+  };
+
+  // Helper: Record Guild Memory
+  const handleRecordGuildMemory = async (
+    institutionId: string, 
+    memory: { title: string; lesson: string; tag?: string; contributorAgentId: string }
+  ) => {
+    if (!user) return;
+    const inst = institutions.find(i => i.id === institutionId);
+    if (!inst) return;
+
+    const newMem = {
+      id: `mem_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      title: memory.title,
+      lesson: memory.lesson,
+      tag: memory.tag || 'general',
+      contributorAgentId: memory.contributorAgentId,
+      recordedAt: new Date().toISOString()
+    };
+
+    try {
+      await updateDoc(doc(db, 'institutions', institutionId), {
+        guild_memory: [...(inst.guild_memory || []), newMem],
+        updatedAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('Failed to record guild memory:', err);
+    }
+  };
+
+  // Helper: Invite Collaborator
+  const handleInviteCollaborator = async (email: string, role: WorkspaceRole) => {
+    if (!user || !currentWorkspace) return;
+    const newCollab = createWorkspaceInvite(email, role, user.uid);
+    const updated = [...collaborators, newCollab];
+    try {
+      await updateDoc(doc(db, 'workspaces', currentWorkspace.id), {
+        collaborators: updated,
+        updatedAt: serverTimestamp()
+      });
+      setCollaborators(updated);
+    } catch (err) {
+      console.error('Failed to invite collaborator:', err);
+    }
+  };
+
+  // Helper: Update Member Role
+  const handleUpdateMemberRole = async (collabId: string, newRole: WorkspaceRole) => {
+    if (!user || !currentWorkspace) return;
+    const updated = collaborators.map(c => c.id === collabId ? { ...c, role: newRole } : c);
+    try {
+      await updateDoc(doc(db, 'workspaces', currentWorkspace.id), {
+        collaborators: updated,
+        updatedAt: serverTimestamp()
+      });
+      setCollaborators(updated);
+    } catch (err) {
+      console.error('Failed to update collaborator role:', err);
+    }
+  };
+
+  // Helper: Remove Collaborator
+  const handleRemoveCollaborator = async (collabId: string) => {
+    if (!user || !currentWorkspace) return;
+    const updated = collaborators.filter(c => c.id !== collabId);
+    try {
+      await updateDoc(doc(db, 'workspaces', currentWorkspace.id), {
+        collaborators: updated,
+        updatedAt: serverTimestamp()
+      });
+      setCollaborators(updated);
+    } catch (err) {
+      console.error('Failed to remove collaborator:', err);
+    }
+  };
+
   return {
     jobs,
     activeJob,
@@ -487,6 +725,16 @@ export function useSwarmManager(user: any, agents: AgentCard[], getLifecycleStag
     tasks,
     allTasks,
     allRelationships,
+    institutions,
+    handleAssignAgentToInstitution,
+    handleRecordGuildMemory,
+    currentWorkspace,
+    collaborators,
+    activeRole: simulatedRole,
+    setSimulatedRole,
+    handleInviteCollaborator,
+    handleUpdateMemberRole,
+    handleRemoveCollaborator,
     handleStartJob,
     handleRateTask,
     currentEnvironment,

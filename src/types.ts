@@ -54,6 +54,7 @@ export interface AgentCard {
   };
   ownerId?: string;
   reputation?: number;
+  reputation_tokens?: number;
   trustScore?: number;
   level?: number;
   exp?: number;
@@ -68,6 +69,8 @@ export interface AgentCard {
     generation: number;
     mutations?: string[];
   };
+  institution_id?: string;
+  guild_name?: string;
   createdAt: string;
   updatedAt: string;
   persona_metadata?: PersonaMetadata;
@@ -120,6 +123,18 @@ export interface SwarmState {
 }
 
 
+export interface TaskBid {
+  id: string;
+  taskId: string;
+  agentId: string;
+  agentName: string;
+  resonanceScore: number;
+  bidAmount: number; // reputation tokens wagered
+  rationale: string;
+  timestamp: string;
+  status: 'pending' | 'accepted' | 'outbid';
+}
+
 export interface SwarmTask {
   id: string;
   jobId: string;
@@ -137,6 +152,16 @@ export interface SwarmTask {
   confidence?: number;
   complexity?: number;
   duration?: number;
+  // Peer-to-Peer Delegation fields
+  parent_task_id?: string;
+  is_delegated?: boolean;
+  delegated_by?: string; // Lead agent ID
+  delegated_to?: string; // Peer executor agent ID
+  delegation_reason?: string;
+  subtask_ids?: string[];
+  // Market-based bidding fields
+  bids?: TaskBid[];
+  winning_bid?: TaskBid;
   createdAt: string;
   updatedAt: string;
 }
@@ -211,3 +236,70 @@ export interface SwarmReport {
   insights: string[];
   createdAt: string;
 }
+
+export interface GuildMemory {
+  id: string;
+  title: string;
+  lesson: string;
+  recordedAt: string;
+  contributorAgentId: string;
+  tag?: string;
+}
+
+export interface InstitutionBuff {
+  name: string;
+  description: string;
+  statBuffs: Record<string, number>;
+  priorityBiasShift?: {
+    correctness?: number;
+    speed?: number;
+    elegance?: number;
+  };
+}
+
+export interface Institution {
+  id: string;
+  name: string;
+  description: string;
+  motto: string;
+  archetypeKey: string;
+  memberAgentIds: string[];
+  cultural_vector: {
+    creativity: number;
+    strategic_thinking: number;
+    technical_depth: number;
+    communication: number;
+    leadership: number;
+    reliability: number;
+    curiosity: number;
+    adaptability: number;
+  };
+  passive_buffs: InstitutionBuff[];
+  guild_memory: GuildMemory[];
+  createdAt: string;
+  updatedAt: string;
+  userId?: string;
+}
+
+export type WorkspaceRole = 'viewer' | 'contributor' | 'admin';
+
+export interface WorkspaceCollaborator {
+  id: string;
+  email: string;
+  role: WorkspaceRole;
+  status: 'pending' | 'active';
+  invitedAt: string;
+  acceptedAt?: string;
+  invitedBy: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  ownerId: string;
+  ownerEmail: string;
+  collaborators: WorkspaceCollaborator[];
+  createdAt: string;
+  updatedAt: string;
+}
+

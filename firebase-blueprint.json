@@ -113,6 +113,40 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "taskId", "agentId", "score"]
+    },
+    "Institution": {
+      "title": "Institution",
+      "description": "Institutional Guild that provides collective cultural DNA vectors and passive buffs.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "motto": { "type": "string" },
+        "archetypeKey": { "type": "string" },
+        "memberAgentIds": { "type": "array", "items": { "type": "string" } },
+        "cultural_vector": { "type": "object" },
+        "passive_buffs": { "type": "array" },
+        "guild_memory": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "archetypeKey"]
+    },
+    "Workspace": {
+      "title": "Workspace",
+      "description": "Collaborative multi-user workspace with RBAC roles.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "ownerEmail": { "type": "string" },
+        "collaborators": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "ownerId"]
     }
   },
   "firestore": {
@@ -131,6 +165,14 @@
     "/jobs/{jobId}/tasks/{taskId}/evaluations/{evalId}": {
       "schema": "Evaluation",
       "description": "Evaluations for a task."
+    },
+    "/institutions/{instId}": {
+      "schema": "Institution",
+      "description": "Institutions and guild memory vectors."
+    },
+    "/workspaces/{workspaceId}": {
+      "schema": "Workspace",
+      "description": "Multi-user workspace membership and collaborator invites."
     }
   }
 }

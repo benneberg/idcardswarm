@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { AgentCard, SwarmJob, SwarmTask, SwarmEnvironment, SwarmEnvironmentCondition } from '../types';
+import { AgentCard, SwarmJob, SwarmTask, SwarmEnvironment, SwarmEnvironmentCondition, WorkspaceRole } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Plus, Search, Activity, ChevronRight, CheckCircle2, AlertCircle, Loader2, Users, CloudRain, Sun, Wind, CloudLightning, ShieldAlert, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Play, Plus, Search, Activity, ChevronRight, CheckCircle2, AlertCircle, Loader2, Users, CloudRain, Sun, Wind, CloudLightning, ShieldAlert, ThumbsUp, ThumbsDown, Coins, GitFork, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 import { SocialFeed } from './SocialFeed';
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
   relationships?: any[];
   currentEnvironment?: SwarmEnvironment;
   setCurrentEnvironment?: (env: SwarmEnvironment) => void;
+  userRole?: WorkspaceRole;
 }
 
 export const SwarmBoard: React.FC<Props> = ({ 
@@ -23,10 +24,12 @@ export const SwarmBoard: React.FC<Props> = ({
   tasks = [], 
   relationships = [],
   currentEnvironment,
-  setCurrentEnvironment
+  setCurrentEnvironment,
+  userRole = 'admin'
 }) => {
   const [goal, setGoal] = useState('');
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  const [expandedBidsTaskId, setExpandedBidsTaskId] = useState<string | null>(null);
 
   const toggleAgent = (id: string) => {
     setSelectedAgents(prev => 
@@ -34,6 +37,7 @@ export const SwarmBoard: React.FC<Props> = ({
     );
   };
 
+  const isViewer = userRole === 'viewer';
   const executors = agents.filter(a => a.mode === 'executor');
   const critics = agents.filter(a => a.mode === 'critic');
 
@@ -131,12 +135,19 @@ export const SwarmBoard: React.FC<Props> = ({
           </div>
         </section>
 
+        {isViewer && (
+          <div className="p-3 border border-amber-600/40 bg-amber-50 text-amber-900 font-mono text-[10px] uppercase flex items-center gap-2">
+            <ShieldAlert size={14} className="text-amber-700 shrink-0" />
+            <span>Viewer Mode: Read-only observation. Launching simulations requires Contributor or Admin role.</span>
+          </div>
+        )}
+
         <button
           onClick={() => onStartJob(goal, selectedAgents)}
-          disabled={!goal || selectedAgents.length === 0 || !!activeJob}
+          disabled={!goal || selectedAgents.length === 0 || !!activeJob || isViewer}
           className="w-full py-4 bg-black text-white font-mono uppercase tracking-[0.3em] font-bold text-sm editorial-shadow hover:translate-y-1 hover:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {activeJob ? 'Swarm Active...' : 'Launch Simulation'}
+          {activeJob ? 'Swarm Active...' : isViewer ? 'Read-Only (Viewer)' : 'Launch Simulation'}
         </button>
 
         <div className="pt-8">
@@ -202,9 +213,87 @@ export const SwarmBoard: React.FC<Props> = ({
                   <div className="flex-1">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-serif text-xl font-bold uppercase tracking-tight">{task.id.replace(/_/g, ' ')}</h4>
-                      <span className="font-mono text-[10px] px-2 bg-stone-100 uppercase">{task.type}</span>
+                      <div className="flex items-center gap-2">
+                        {task.is_delegated && (
+                          <span className="font-mono text-[9px] px-2 py-0.5 bg-indigo-50 text-indigo-800 border border-indigo-200 uppercase font-bold flex items-center gap-1">
+                            <GitFork size={10} /> Delegated
+                          </span>
+                        )}
+                        <span className="font-mono text-[10px] px-2 bg-stone-100 uppercase">{task.type}</span>
+                      </div>
                     </div>
-                    <p className="font-sans text-sm italic mb-4 opacity-70">"{task.description}"</p>
+                    <p className="font-sans text-sm italic mb-3 opacity-70">"{task.description}"</p>
+
+                    {/* Peer-to-Peer Delegation Banner */}
+                    {(task.delegated_by || task.is_delegated) && (
+                      <div className="mb-3 p-2.5 bg-stone-50 border-l-2 border-indigo-600 font-mono text-[10px] space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-indigo-950">
+                          <GitFork size={11} className="text-indigo-600" />
+                          <span>Autonomous Peer Delegation</span>
+                        </div>
+                        <p className="text-stone-600 font-sans text-xs">
+                          Assigned by <strong>{agents.find(a => a.id === task.delegated_by)?.role || task.delegated_by || 'Lead'}</strong> to <strong>{agents.find(a => a.id === task.delegated_to)?.role || task.delegated_to || 'Peer'}</strong>: "{task.delegation_reason}"
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Decomposed Subtask Indicators */}
+                    {task.subtask_ids && task.subtask_ids.length > 0 && (
+                      <div className="mb-3 flex items-center gap-1.5 font-mono text-[9px] text-stone-500 bg-stone-100/70 px-2 py-1 border border-black/10">
+                        <GitFork size={10} />
+                        <span>Decomposed into {task.subtask_ids.length} peer sub-task node(s)</span>
+                      </div>
+                    )}
+
+                    {/* Market-Based Task Auction & Bids Order Book */}
+                    {task.winning_bid && (
+                      <div className="mb-3 p-2 border border-black/15 bg-[#FDFCF9] space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Coins size={12} className="text-amber-700" />
+                            <span className="font-mono text-[9px] uppercase font-bold text-stone-800">Auction Cleared</span>
+                            <span className="font-mono text-[9px] px-1.5 py-0.2 bg-amber-100 text-amber-900 font-bold border border-amber-300">
+                              Wager: {task.winning_bid.bidAmount} Tokens
+                            </span>
+                            <span className="font-mono text-[9px] text-stone-500">
+                              (Resonance: {Math.round(task.winning_bid.resonanceScore * 100)}%)
+                            </span>
+                          </div>
+                          {task.bids && task.bids.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedBidsTaskId(expandedBidsTaskId === task.id ? null : task.id)}
+                              className="font-mono text-[9px] uppercase text-stone-600 hover:text-black flex items-center gap-0.5"
+                            >
+                              {expandedBidsTaskId === task.id ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                              {task.bids.length} Bids
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Expandable Order Book */}
+                        {expandedBidsTaskId === task.id && task.bids && (
+                          <div className="pt-2 border-t border-black/10 space-y-1 font-mono text-[9px]">
+                            <div className="text-stone-400 uppercase text-[8px]">Order Book Wagers</div>
+                            {task.bids.map((b, bIdx) => {
+                              const bidder = agents.find(a => a.id === b.agentId);
+                              const isWinner = b.agentId === task.winning_bid?.agentId;
+                              return (
+                                <div key={bIdx} className={`flex items-center justify-between p-1 border ${isWinner ? 'bg-amber-50 border-amber-300 font-bold' : 'border-stone-200'}`}>
+                                  <span>{bidder?.role || b.agentId}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span>{b.bidAmount} TKN</span>
+                                    <span className="text-stone-400">{Math.round(b.resonanceScore * 100)}% Res</span>
+                                    {isWinner && <span className="text-amber-800 text-[8px] uppercase">Winner</span>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {task.output?.content && (
                       <div className="mt-4 space-y-2">
                         <div className="p-4 bg-stone-50 editorial-border font-mono text-[11px] max-h-40 overflow-y-auto whitespace-pre-wrap">

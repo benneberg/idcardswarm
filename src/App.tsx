@@ -20,6 +20,8 @@ import { AgentLog } from './components/AgentLog.tsx';
 import { SwarmMethodologyGuide } from './components/SwarmMethodologyGuide.tsx';
 import { AgentShowcaseModal } from './components/AgentShowcaseModal.tsx';
 import { BlueprintImportModal } from './components/BlueprintImportModal.tsx';
+import { InstitutionGuildsModal } from './components/InstitutionGuildsModal.tsx';
+import { WorkspaceInviteModal } from './components/WorkspaceInviteModal.tsx';
 import { USER_PERSONAS, UserPersona } from './data/userPersonas.ts';
 import { spawnOffspring } from './lib/agentService.ts';
 import { 
@@ -31,7 +33,7 @@ import {
 import { auth } from './lib/firebase.ts';
 import type { AgentCard } from './types.ts';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, ClipboardList, Settings, Loader2, Share2, X, Search, Plus, AlertCircle, GitBranch, BookOpen, Upload, SlidersHorizontal, RotateCcw } from 'lucide-react';
+import { Users, ClipboardList, Settings, Loader2, Share2, X, Search, Plus, AlertCircle, GitBranch, BookOpen, Upload, SlidersHorizontal, RotateCcw, Shield, UserCheck } from 'lucide-react';
 
 // Modular Hooks
 import { useAgentRegistry } from './hooks/useAgentRegistry';
@@ -47,6 +49,8 @@ export default function App() {
   const [selectedPersona, setSelectedPersona] = useState<UserPersona | null>(null);
   const [showCreator, setShowCreator] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showGuildsModal, setShowGuildsModal] = useState(false);
+  const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [showcaseAgent, setShowcaseAgent] = useState<AgentCard | null>(null);
   const [selectedLogAgent, setSelectedLogAgent] = useState<AgentCard | null>(null);
   const [selectedForComparison, setSelectedForComparison] = useState<AgentCard[]>([]);
@@ -81,6 +85,16 @@ export default function App() {
     tasks, 
     allTasks, 
     allRelationships, 
+    institutions,
+    handleAssignAgentToInstitution,
+    handleRecordGuildMemory,
+    currentWorkspace,
+    collaborators,
+    activeRole,
+    setSimulatedRole,
+    handleInviteCollaborator,
+    handleUpdateMemberRole,
+    handleRemoveCollaborator,
     handleStartJob,
     handleRateTask,
     currentEnvironment,
@@ -196,6 +210,32 @@ export default function App() {
             <BookOpen size={12} />
             Simulation Specs
           </button>
+
+          <div className="ml-auto flex items-center gap-3 pb-3 shrink-0">
+            <button
+              onClick={() => setShowGuildsModal(true)}
+              className="px-3 py-1.5 border border-black bg-white hover:bg-stone-100 transition-colors flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-wider text-indigo-900 shadow-sm"
+              title="View Institutional Culture & Guild Memory Vectors"
+            >
+              <Shield size={12} className="text-indigo-600" />
+              <span>Guilds ({institutions.length})</span>
+            </button>
+            <button
+              onClick={() => setShowWorkspaceModal(true)}
+              className="px-3 py-1.5 border border-black bg-black text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-wider shadow-sm"
+              title="Manage Workspace Collaborators & RBAC"
+            >
+              <UserCheck size={12} />
+              <span>Team ({collaborators.length})</span>
+              <span className={`px-1.5 py-0.2 rounded text-[8px] uppercase ${
+                activeRole === 'admin' ? 'bg-amber-400 text-black font-bold' :
+                activeRole === 'contributor' ? 'bg-blue-400 text-black font-bold' :
+                'bg-zinc-600 text-white'
+              }`}>
+                {activeRole}
+              </span>
+            </button>
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
@@ -388,6 +428,7 @@ export default function App() {
                 onRateTask={handleRateTask}
                 currentEnvironment={currentEnvironment}
                 setCurrentEnvironment={setCurrentEnvironment}
+                userRole={activeRole}
                 onExecuteJob={async () => {
                   if (activeJob) {
                     await setActiveJob({ ...activeJob, status: 'executing' });
@@ -569,6 +610,27 @@ export default function App() {
              </motion.div>
            )}
         </AnimatePresence>
+
+        <InstitutionGuildsModal
+          isOpen={showGuildsModal}
+          onClose={() => setShowGuildsModal(false)}
+          institutions={institutions}
+          agents={agents}
+          onAssignAgent={handleAssignAgentToInstitution}
+          onRecordMemory={handleRecordGuildMemory}
+        />
+
+        <WorkspaceInviteModal
+          isOpen={showWorkspaceModal}
+          onClose={() => setShowWorkspaceModal(false)}
+          workspace={currentWorkspace}
+          collaborators={collaborators}
+          activeRole={activeRole}
+          onSimulateRole={setSimulatedRole}
+          onInviteCollaborator={handleInviteCollaborator}
+          onUpdateRole={handleUpdateMemberRole}
+          onRemoveCollaborator={handleRemoveCollaborator}
+        />
       </main>
 
       <footer className="mt-24 pt-6 border-t border-black/10 flex flex-col md:flex-row justify-between items-center gap-6">
