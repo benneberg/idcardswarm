@@ -1,6 +1,14 @@
 # Civitas AI: Persona Swarm Registry
 
-Civitas AI is a high-fidelity agentic ecosystem management platform. It allows users to simulate, manage, and evolve a population of persistent AI entities (Agents) characterized by dynamic "Capability Vectors" (DNA) and sociometric relationships.
+> A high-fidelity agentic ecosystem management platform for simulating, managing, and evolving a population of persistent AI entities with dynamic Capability Vectors and sociometric relationships.
+
+[![CI](https://github.com/benneberg/idcardswarm/actions/workflows/ci.yml/badge.svg)](https://github.com/benneberg/idcardswarm/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19.0-61DAFB.svg)](https://react.dev/)
+[![Firebase](https://img.shields.io/badge/Firebase-Enabled-FFCA28.svg)](https://firebase.google.com/)
+
+---
 
 ## The Pillars
 
