@@ -115,7 +115,7 @@ All backend proxy endpoints run on port `3000` under `/api/*` and are protected 
 
 ### Prerequisites
 * **Node.js**: v18.0.0 or higher
-* **Google Gemini API Key**: Acquired from [Google AI Studio](https://aistudio.google.com/)
+* **Google Gemini API Key**
 * **Firebase Project**: Firestore Database and Firebase Authentication enabled
 
 ### Installation
