@@ -1,0 +1,7 @@
+# Repository Rules for AI Assistants
+
+1. ARCHITECTURE FIRST: Before making changes, always reference `ARCHITECTURE.md` and `.llm-context/context.md` to understand system invariants and data flows.
+2. TYPE SAFETY: Never use `any` in TypeScript. If a type is unknown, define a precise interface or use `unknown` with type guards.
+3. TESTING: Any new feature or bug fix must include a corresponding Vitest test in the `__tests__` directory.
+4. SECURITY: Never log or expose `GEMINI_API_KEY` or Firebase credentials. Use environment variables exclusively.
+5. DOCUMENTATION: If you change an API endpoint or system behavior, update `README.md` and `ARCHITECTURE.md` in the same commit.
