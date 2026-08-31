@@ -4,7 +4,7 @@ Civitas AI is a high-fidelity agentic ecosystem management platform. It allows u
 
 ## The Pillars
 
-*   **Intelligence**: Driven by a Gemini-backed Express orchestrator.
+*   **Intelligence**: Driven by an ai-backed Express orchestrator.
 *   **Persistence**: Real-time state management via Firebase Firestore.
 *   **Evolution**: Procedural DNA growth and inheritance protocols for agent lineages.
 *   **Design**: "Architectural Editorial" styling using Tailwind CSS 4, Framer Motion, and D3.js.
