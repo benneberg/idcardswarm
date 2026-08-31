@@ -1,0 +1,9 @@
+# Default owners for everything in the repo
+* @benneberg
+
+# Core architecture and security docs require explicit approval
+/ARCHITECTURE.md @benneberg
+/SECURITY.md @benneberg
+
+# AI Context files
+/.llm-context/ @benneberg
