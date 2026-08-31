@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 /**
  * Security Invariant Checker that models the Firestore Security Rules
- * and API input validation rules defined in security_spec.md.
+ * and API input validation rules defined in SECURITY.md and ARCHITECTURE.md.
  */
 interface SecurityContext {
   auth?: { uid: string };
