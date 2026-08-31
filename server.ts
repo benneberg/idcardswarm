@@ -1,9 +1,11 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { ai, MODELS } from "./src/lib/gemini";
 import { Type } from "@google/genai";
-import dotenv from "dotenv";
 import pino from "pino";
 
 const logger = pino({
@@ -12,8 +14,6 @@ const logger = pino({
     options: { colorize: true }
   }
 });
-
-dotenv.config();
 
 const app = express();
 const PORT = 3000;
@@ -428,7 +428,8 @@ async function startApp() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    logger.info({ port: PORT, env: process.env.NODE_ENV || "development" }, "Civitas Server Node Booted");
+    console.log(`Server running on http://localhost:${PORT}`);
+    logger.info({ port: PORT, env: process.env.NODE_ENV || "development" }, `Civitas Server Node Booted on port ${PORT}`);
   });
 }
 
