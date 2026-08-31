@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------
+  # 1. The Civitas AI Application
+  # ---------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: civitas-ai-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.docker
+    environment:
+      # Tell the backend to use the local Firestore emulator instead of production
+      - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      - GCLOUD_PROJECT=demo-civitas-ai
+    depends_on:
+      - firestore-emulator
+    networks:
+      - civitas-network
+
+  # ---------------------------------------------------------
+  # 2. Local Firebase Firestore Emulator
+  # ---------------------------------------------------------
+  # Provides a zero-config, in-memory Firestore database for local dev/testing.
+  firestore-emulator:
+    image: mtlynch/firestore-emulator
+    container_name: civitas-firestore
+    restart: unless-stopped
+    environment:
+      - FIRESTORE_PROJECT_ID=demo-civitas-ai
+      - FIRESTORE_RULES=/rules/firestore.rules
+    ports:
+      - "8080:8080" # Expose to host so the React frontend can also connect to it
+    networks:
+      - civitas-network
+    # Optional: If you have local firestore.rules, mount them here:
+    # volumes:
+    #   - ./firestore.rules:/rules/firestore.rules:ro
+
+networks:
+  civitas-network:
+    driver: bridge
